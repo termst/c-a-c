@@ -408,6 +408,8 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 6px 0; width: 100%; }
 .skin h3 { margin: 0; font: 700 14px var(--font-display); }
 .skin p { margin: 0; font-size: 13px; color: var(--muted); flex: 1; }
 .skin .btn { width: 100%; }
+.skin p.perk { flex: 0 0 auto; color: var(--brass-text); font-weight: 600; }
+.float.auto { font-size: 13px; opacity: .85; }
 .pv-wrap { display: grid; place-items: center; padding: 14px 0 12px; background: var(--surface-2); border-radius: 12px; }
 .pclock { position: relative; width: 104px; height: 104px; margin-bottom: 8px; }
 .pclock .clock-body { box-shadow: 0 8px 0 var(--deep, var(--brass-deep)); }
@@ -638,9 +640,49 @@ const UPG = [];
   ['b1','Metronome','The green Perfect Tick zone is 50% wider.',2000],
   ['b2','Chronograph','The green Perfect Tick zone is another 50% wider.',2e5],
 ].forEach(([id,name,desc,cost]) => UPG.push({ id, name, desc, cost, type: 'beat', v: 1.5, kind: 'Rhythm upgrade', unlock: s => s.runEarned >= cost * 0.4 }));
-const TIER_AT = [1, 10, 25, 50, 100, 150, 200];
-const TIER_COST = [10, 50, 500, 5e4, 5e6, 5e8, 5e10];
-const TIER_NAME = ['Tune-up','Recalibration','Precision Fit','Master Service','Chronometer Grade','Observatory Grade','Eternal Grade'];
+[
+  ['x1','Hardened Pins','Each click earns 3x ticks.',2e5,'clickMult',3],
+  ['x2','Diamond Pivot','Each click earns 3x ticks.',2e9,'clickMult',3],
+  ['x3','Anvil Strike','Each click earns 5x ticks.',2e13,'clickMult',5],
+  ['c9','Chronal Strike','Each click earns another +2% of your ticks per second.',5e14,'clickPct',0.02],
+  ['c10','Temporal Hammer','Each click earns another +2% of your ticks per second.',5e17,'clickPct',0.02],
+].forEach(([id,name,desc,cost,type,v]) => UPG.push({ id, name, desc, cost, type, v, kind: 'Click upgrade', unlock: s => s.runEarned >= cost * 0.4 }));
+[
+  ['g7','Paradox Engine','Every machine makes 3x ticks.',1e26,3],
+  ['g8','Entropy Reversal','Every machine makes 4x ticks.',1e30,4],
+  ['g9','Closed Timelike Curve','Every machine makes 5x ticks.',1e35,5],
+].forEach(([id,name,desc,cost,v]) => UPG.push({ id, name, desc, cost, type: 'global', v, kind: 'Global upgrade', unlock: s => s.runEarned >= cost * 0.4 }));
+[
+  ['a1','Clockwork Finger','Clicks the clock for you once per second. Auto clicks earn the same as a manual click.',2500,'autoAdd',1],
+  ['a2','Twin Fingers','Adds 2 auto clicks per second.',5e4,'autoAdd',2],
+  ['a3','Robot Hand','Adds 5 auto clicks per second.',2e6,'autoAdd',5],
+  ['a4','Piston Array','Adds 10 auto clicks per second.',1e8,'autoAdd',10],
+  ['a5','Servo Swarm','Adds 25 auto clicks per second.',5e10,'autoAdd',25],
+  ['a6','Overclocked Actuators','Auto clicks come 2x as fast.',1e12,'autoMult',2],
+  ['a7','Quantum Finger','Auto clicks come 2x as fast.',1e16,'autoMult',2],
+].forEach(([id,name,desc,cost,type,v]) => UPG.push({ id, name, desc, cost, type, v, kind: 'Auto clicker upgrade', unlock: s => (id === 'a1' ? true : s.upgrades.includes('a1')) && s.runEarned >= cost * 0.4 }));
+UPG.push({ id: 'a8', name: 'Beat Sync', desc: 'Once every beat your auto clicker lands a Perfect Tick for you, and keeps your streak alive.', cost: 5e6, type: 'autoSync', v: 1, kind: 'Auto clicker upgrade', unlock: s => s.upgrades.includes('a1') && s.runEarned >= 2e6 });
+[
+  ['b3','Pendulum Damper','The green Perfect Tick zone is another 50% wider.',2e8,'beat',1.5],
+  ['b4','Rhythm Coach','Each step of a Perfect streak adds 0.25 more to the click multiplier.',1e6,'perfStep',0.25],
+  ['b5','Rhythm Master','Each step of a Perfect streak adds another 0.25 to the click multiplier.',1e10,'perfStep',0.25],
+].forEach(([id,name,desc,cost,type,v]) => UPG.push({ id, name, desc, cost, type, v, kind: 'Rhythm upgrade', unlock: s => s.runEarned >= cost * 0.4 }));
+[
+  ['h1','Brass Bell','Golden chimes appear 30% more often.',3e5,'chimeRate',0.7],
+  ['h2','Silver Bell','Golden chimes appear another 30% more often.',3e9,'chimeRate',0.7],
+  ['h3','Long Echo','Frenzy lasts 15 seconds longer.',5e7,'frenzyLen',15000],
+  ['h4','Everlasting Echo','Frenzy lasts another 20 seconds longer.',5e11,'frenzyLen',20000],
+].forEach(([id,name,desc,cost,type,v]) => UPG.push({ id, name, desc, cost, type, v, kind: 'Chime upgrade', unlock: s => s.runEarned >= cost * 0.4 }));
+[
+  ['d1','Bulk Order','All machines cost 5% less.',1e5,'discount',0.95],
+  ['d2','Wholesale Contract','All machines cost 5% less.',1e9,'discount',0.95],
+  ['d3','Guild Discount','All machines cost 5% less.',1e13,'discount',0.95],
+  ['o1','Night Shift','Offline production is 25% higher.',1e7,'offline',0.25],
+  ['o2','Time Capsule','Offline production is another 25% higher and lasts 4 hours longer.',1e11,'offline',0.25],
+].forEach(([id,name,desc,cost,type,v]) => UPG.push({ id, name, desc, cost, type, v, kind: type === 'discount' ? 'Economy upgrade' : 'Offline upgrade', unlock: s => s.runEarned >= cost * 0.4 }));
+const TIER_AT = [1, 10, 25, 50, 100, 150, 200, 250, 300, 400];
+const TIER_COST = [10, 50, 500, 5e4, 5e6, 5e8, 5e10, 5e12, 5e14, 5e16];
+const TIER_NAME = ['Tune-up','Recalibration','Precision Fit','Master Service','Chronometer Grade','Observatory Grade','Eternal Grade','Temporal Grade','Paradox Grade','Infinite Grade'];
 MACHINES.forEach((m, i) => TIER_AT.forEach((at, k) => UPG.push({
   id: `m${i}t${k}`, name: `${m.name}: ${TIER_NAME[k]}`, desc: `Every ${m.name} makes 2x ticks.`,
   cost: m.cost * TIER_COST[k], type: 'gen', i, v: 2, kind: `${m.name} upgrade`,
@@ -683,6 +725,10 @@ const ACH = [
   ['b1','On Beat','Land your first Perfect Tick', s => s.perfects >= 1],
   ['b2','Steady Hand','Land 10 Perfect Ticks in a row', s => s.bestStreak >= 10],
   ['b3','Perfect Rhythm','Land 25 Perfect Ticks in a row', s => s.bestStreak >= 25],
+  ['a1','Clockwork Hand','Own an auto clicker', () => C.autoRate > 0],
+  ['a2','Ghost Hands','Reach 10 auto clicks per second', () => C.autoRate >= 10],
+  ['a3','Click Storm','Reach 100 auto clicks per second', () => C.autoRate >= 100],
+  ['a4','Auto Perfect','Land 10 Perfect Ticks with Beat Sync', s => s.autoPerfects >= 10],
   ['f1','Burning Hot','Reach 10,000 lifetime ticks and set the clock on fire', s => s.lifetimeEarned >= 1e4],
 ].map(([id, name, desc, test]) => ({ id, name, desc, test }));
 
@@ -716,8 +762,8 @@ const ICONS = {
   fire: svg('<path d="M12 3c1 4 5 5.5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 1-9z"/>'),
   skins: svg('<rect x="3.5" y="3.5" width="17" height="17" rx="4"/><circle cx="12" cy="12" r="4"/><path d="M12 10v2l1.3.8"/>'),
 };
-const ACH_ICON = { e: 'coin', k: 'click', m: 'machines', p: 'bolt', h: 'bell', u: 'upgrades', r: 'rewind', b: 'beat', f: 'fire' };
-const upIcon = u => u.type === 'gen' ? MICON[u.i] : u.type === 'global' ? ICONS.global : u.type === 'beat' ? ICONS.beat : ICONS.click;
+const ACH_ICON = { e: 'coin', k: 'click', m: 'machines', p: 'bolt', h: 'bell', u: 'upgrades', r: 'rewind', b: 'beat', f: 'fire', a: 'click' };
+const upIcon = u => u.type === 'gen' ? MICON[u.i] : u.type === 'global' ? ICONS.global : (u.type === 'beat' || u.type === 'perfStep') ? ICONS.beat : /^(chime|frenzy)/.test(u.type) ? ICONS.bell : u.type === 'discount' ? ICONS.coin : u.type === 'offline' ? ICONS.rewind : ICONS.click;
 
 /* ---------- Number formatting ---------- */
 const SUF = ['','K','M','B','T','Qa','Qi','Sx','Sp','Oc','No','Dc','UDc','DDc','TDc','QaDc','QiDc','SxDc','SpDc','OcDc','NoDc','Vg','UVg','DVg','TVg','QaVg','QiVg','SxVg','SpVg','OcVg','NoVg','Tg'];
@@ -762,7 +808,7 @@ function fmtTime(sec) {
 const DEFAULT = () => ({
   v: 1, ticks: 0, runEarned: 0, lifetimeEarned: 0, clicks: 0, clickEarned: 0,
   owned: Array(12).fill(0), upgrades: [], achievements: [],
-  gears: 0, rewinds: 0, chimes: 0, playTime: 0, frenzyUntil: 0, perfects: 0, bestStreak: 0, gems: 0, skin: 'brass', skins: [],
+  gears: 0, rewinds: 0, chimes: 0, playTime: 0, frenzyUntil: 0, perfects: 0, autoPerfects: 0, autoClicks: 0, bestStreak: 0, gems: 0, skin: 'brass', skins: [],
   notation: 'short', buyAmt: 1, lastSeen: now(), created: now(),
 });
 function sanitize(o) {
@@ -784,10 +830,12 @@ function sanitize(o) {
 }
 
 let S = DEFAULT();
-const C = { tps: 0, baseTps: 0, click: 1, each: Array(12).fill(0), global: 1, frenzy: 1, gearMult: 1 };
+const C = { autoRate: 0, autoIncome: 0, income: 0, window: 0.06, perfStep: 0.5, autoSync: false, discount: 1, chimeRate: 1, frenzyLen: 30000, offline: 0.5, offlineCap: 8 * 3600, tps: 0, baseTps: 0, click: 1, each: Array(12).fill(0), global: 1, frenzy: 1, gearMult: 1 };
 
 function recalc() {
-  let clickMult = 1, clickPct = 0, global = 1, win = 1;
+  let clickMult = 1, clickPct = 0, global = 1, win = 1, autoAdd = 0, autoMult = 1, sync = false, step = 0.5, disc = 1, chime = 1, flen = 30000, off = 0.5, offCap = 8 * 3600;
+  const pk = SKIN_BY_ID[S.skin] ? SKIN_BY_ID[S.skin].perk : null;
+  const sp = (pk && pk.fx) || {};
   const genMult = Array(12).fill(1);
   for (const id of S.upgrades) {
     const u = UPG_BY_ID[id];
@@ -796,8 +844,20 @@ function recalc() {
     else if (u.type === 'global') global *= u.v;
     else if (u.type === 'gen') genMult[u.i] *= u.v;
     else if (u.type === 'beat') win *= u.v;
+    else if (u.type === 'autoAdd') autoAdd += u.v;
+    else if (u.type === 'autoMult') autoMult *= u.v;
+    else if (u.type === 'autoSync') sync = true;
+    else if (u.type === 'perfStep') step += u.v;
+    else if (u.type === 'discount') disc *= u.v;
+    else if (u.type === 'chimeRate') chime *= u.v;
+    else if (u.type === 'frenzyLen') flen += u.v;
+    else if (u.type === 'offline') { off += u.v; if (id === 'o2') offCap += 4 * 3600; }
   }
+  clickMult *= sp.click || 1; win *= sp.window || 1; autoMult *= sp.auto || 1; step += sp.perfStep || 0;
+  disc *= sp.discount || 1; chime *= sp.chime || 1; flen += sp.frenzyLen || 0; off += sp.offline || 0; offCap += sp.offlineCap || 0;
   C.window = 0.06 * win;
+  C.autoRate = autoAdd * autoMult; C.autoSync = sync && autoAdd > 0; C.perfStep = step; C.discount = disc;
+  C.chimeRate = chime; C.frenzyLen = flen; C.offline = off; C.offlineCap = offCap;
   drawZone();
   C.gearMult = 1 + S.gears * 0.05;
   C.global = global * C.gearMult * (1 + S.achievements.length * 0.01);
@@ -807,10 +867,12 @@ function recalc() {
   C.frenzy = now() < S.frenzyUntil ? 7 : 1;
   C.tps = base * C.frenzy;
   C.click = (clickMult * C.gearMult + base * clickPct) * C.frenzy;
+  C.autoIncome = C.autoRate * C.click;
+  C.income = C.tps + C.autoIncome;
 }
 function earn(x) { S.ticks += x; S.runEarned += x; S.lifetimeEarned += x; }
 
-function unitCost(i) { return MACHINES[i].cost * Math.pow(GROWTH, S.owned[i]); }
+function unitCost(i) { return MACHINES[i].cost * C.discount * Math.pow(GROWTH, S.owned[i]); }
 function costFor(i, n) { return unitCost(i) * (Math.pow(GROWTH, n) - 1) / (GROWTH - 1); }
 function maxAffordable(i) { return Math.max(0, Math.floor(Math.log(S.ticks * (GROWTH - 1) / unitCost(i) + 1) / Math.log(GROWTH))); }
 function buyCount(i) { return S.buyAmt === 'max' ? maxAffordable(i) : S.buyAmt; }
@@ -1047,13 +1109,13 @@ function buildCosmic(svg, R) {
 }
 
 const SKINS = [
-  { id: 'brass', name: 'Brass Classic', desc: 'The original polished brass analog clock.', cost: 0, build: buildBrass },
-  { id: 'minimal', name: 'Bauhaus', desc: 'White enamel dial, four batons and a red second hand.', cost: 15, build: buildMinimal },
-  { id: 'digital', name: 'LCD Digital', desc: 'Seven segment display. Shows the real time and your ticks per second.', cost: 30, build: buildDigital },
-  { id: 'antique', name: 'Antique Mantel', desc: 'Aged ivory dial, Roman numerals, spade hands and a cracked finish.', cost: 45, build: buildAntique },
-  { id: 'neon', name: 'Neon Nights', desc: 'Glowing tubes on a dark dial. Machine numerals light up in cyan.', cost: 60, build: buildNeon },
-  { id: 'skeleton', name: 'Skeleton Works', desc: 'Open dial with turning gears and ruby jewels for each machine.', cost: 90, build: buildSkeleton },
-  { id: 'cosmic', name: 'Cosmic', desc: 'Starfield dial with a ringed planet and a comet for a second hand.', cost: 140, build: buildCosmic },
+  { id: 'brass', name: 'Brass Classic', desc: 'The original polished brass analog clock.', cost: 0, build: buildBrass, perk: { text: 'Click power +10%', fx: { click: 1.1 } } },
+  { id: 'minimal', name: 'Bauhaus', desc: 'White enamel dial, four batons and a red second hand.', cost: 15, build: buildMinimal, perk: { text: 'Perfect Tick zone 25% wider', fx: { window: 1.25 } } },
+  { id: 'digital', name: 'LCD Digital', desc: 'Seven segment display. Shows the real time and your ticks per second.', cost: 30, build: buildDigital, perk: { text: 'Auto clicks 50% faster', fx: { auto: 1.5 } } },
+  { id: 'antique', name: 'Antique Mantel', desc: 'Aged ivory dial, Roman numerals, spade hands and a cracked finish.', cost: 45, build: buildAntique, perk: { text: 'Offline production +25%, lasts 4 hours longer', fx: { offline: 0.25, offlineCap: 4 * 3600 } } },
+  { id: 'neon', name: 'Neon Nights', desc: 'Glowing tubes on a dark dial. Machine numerals light up in cyan.', cost: 60, build: buildNeon, perk: { text: 'Perfect streak multiplier grows 0.25 faster per step', fx: { perfStep: 0.25 } } },
+  { id: 'skeleton', name: 'Skeleton Works', desc: 'Open dial with turning gears and ruby jewels for each machine.', cost: 90, build: buildSkeleton, perk: { text: 'All machines cost 8% less', fx: { discount: 0.92 } } },
+  { id: 'cosmic', name: 'Cosmic', desc: 'Starfield dial with a ringed planet and a comet for a second hand.', cost: 140, build: buildCosmic, perk: { text: 'Chimes appear 2x as often, frenzy lasts 15 seconds longer', fx: { chime: 0.5, frenzyLen: 15000 } } },
 ];
 const SKIN_BY_ID = Object.fromEntries(SKINS.map(s => [s.id, s]));
 const owns = id => id === 'brass' || S.skins.includes(id);
@@ -1101,7 +1163,7 @@ function renderSkins() {
     const own = owns(sk.id), eq = S.skin === sk.id;
     const card = document.createElement('div');
     card.className = 'skin' + (eq ? ' eq' : '');
-    card.innerHTML = `<div class="pv-wrap"><div class="pclock sk" data-skin="${sk.id}"><span class="clock-body"><span class="face"><svg viewBox="0 0 200 200" aria-hidden="true"></svg></span></span></div></div><h3>${sk.name}</h3><p>${sk.desc}</p>`;
+    card.innerHTML = `<div class="pv-wrap"><div class="pclock sk" data-skin="${sk.id}"><span class="clock-body"><span class="face"><svg viewBox="0 0 200 200" aria-hidden="true"></svg></span></span></div></div><h3>${sk.name}</h3><p>${sk.desc}</p><p class="perk"><b>Perk:</b> ${sk.perk.text}</p>`;
     previewSkin(sk, card.querySelector('svg'));
     const b = document.createElement('button');
     b.className = 'btn' + (own && !eq ? ' ghost' : '');
@@ -1119,6 +1181,7 @@ function renderSkins() {
 function equipSkin(id) {
   if (!owns(id)) return;
   S.skin = id;
+  recalc();
   buildDial();
   renderSkins();
   save();
@@ -1297,7 +1360,10 @@ function renderStats() {
     ['Lifetime ticks', fmt(S.lifetimeEarned)],
     ['Per second', fmt(C.tps, true)],
     ['Per click', fmt(C.click, true)],
-    ['Clicks', S.clicks.toLocaleString('en-US')],
+    ['Clicks (manual and auto)', S.clicks.toLocaleString('en-US')],
+    ['Auto clicks', S.autoClicks.toLocaleString('en-US')],
+    ['Auto clicks per second', fmt(C.autoRate, true)],
+    ['Skin perk', SKIN_BY_ID[S.skin].perk.text],
     ['Ticks from clicks', fmt(S.clickEarned)],
     ['Machines owned', totalOwned(S).toLocaleString('en-US')],
     ['Production multiplier', 'x' + fmt(C.global, true)],
@@ -1339,7 +1405,7 @@ const stage = $('#stage');
 const clock = $('#clock');
 let pressTimer = 0, floats = 0;
 const BEAT_MS = 3000;
-const perfectMult = n => 2 + Math.min(n, 25) * 0.5;
+const perfectMult = n => 2 + Math.min(n, 25) * C.perfStep;
 const beatEl = $('#beat'), markerEl = $('#marker');
 let lastBeat = -1, streak = 0, lastPerfect = 0;
 function drawZone() {
@@ -1348,34 +1414,16 @@ function drawZone() {
   const th = C.window * 2 * Math.PI, s = 47 * Math.sin(th), c = 47 * Math.cos(th);
   z.setAttribute('d', `M ${(50 - s).toFixed(2)} ${(50 - c).toFixed(2)} A 47 47 0 0 1 ${(50 + s).toFixed(2)} ${(50 - c).toFixed(2)}`);
 }
-function doClick(x, y) {
-  const t = now();
-  const ph = (t % BEAT_MS) / BEAT_MS, idx = Math.round(t / BEAT_MS);
-  let gain = C.click, perfect = false;
-  if (Math.min(ph, 1 - ph) <= C.window && idx !== lastBeat) {
-    lastBeat = idx; perfect = true;
-    streak++; lastPerfect = t; S.perfects++; S.bestStreak = Math.max(S.bestStreak, streak);
-    if (streak % 10 === 0) { S.gems += 2; toast(`Perfect streak ${streak} · +2 gems`); }
-    gain *= perfectMult(streak);
-    beatEl.classList.add('hit');
-    setTimeout(() => beatEl.classList.remove('hit'), 220);
-  }
-  earn(gain);
-  S.clicks++;
-  S.clickEarned += gain;
-  secAngle += 6;
-  clock.classList.add('pressed');
-  clearTimeout(pressTimer);
-  pressTimer = setTimeout(() => clock.classList.remove('pressed'), 80);
+function spawnFloat(x, y, text, cls, sparks) {
   if (reduceMotion || floats > 40) return;
   const f = document.createElement('div');
-  f.className = 'float' + (perfect ? ' perfect' : '');
-  f.textContent = (perfect ? 'Perfect +' : '+') + fmt(gain, true);
+  f.className = 'float' + (cls ? ' ' + cls : '');
+  f.textContent = text;
   f.style.left = x + 'px'; f.style.top = y + 'px';
   floats++;
   f.addEventListener('animationend', () => { f.remove(); floats--; });
   stage.appendChild(f);
-  for (let k = 0; k < 5; k++) {
+  for (let k = 0; k < sparks; k++) {
     const s = document.createElement('div');
     s.className = 'spark';
     const a = Math.random() * Math.PI * 2, d = 30 + Math.random() * 40;
@@ -1386,6 +1434,59 @@ function doClick(x, y) {
     stage.appendChild(s);
   }
 }
+function pressClock() {
+  secAngle += 6;
+  clock.classList.add('pressed');
+  clearTimeout(pressTimer);
+  pressTimer = setTimeout(() => clock.classList.remove('pressed'), 80);
+}
+function inZone(t) {
+  const ph = (t % BEAT_MS) / BEAT_MS;
+  return Math.min(ph, 1 - ph) <= C.window && Math.round(t / BEAT_MS) !== lastBeat;
+}
+function landPerfect(t) {
+  lastBeat = Math.round(t / BEAT_MS);
+  streak++; lastPerfect = t; S.perfects++; S.bestStreak = Math.max(S.bestStreak, streak);
+  if (streak % 10 === 0) { S.gems += 2; toast(`Perfect streak ${streak} · +2 gems`); }
+  beatEl.classList.add('hit');
+  setTimeout(() => beatEl.classList.remove('hit'), 220);
+  return perfectMult(streak);
+}
+function doClick(x, y) {
+  const t = now();
+  let gain = C.click, perfect = false;
+  if (inZone(t)) { perfect = true; gain *= landPerfect(t); }
+  earn(gain);
+  S.clicks++;
+  S.clickEarned += gain;
+  pressClock();
+  spawnFloat(x, y, (perfect ? 'Perfect +' : '+') + fmt(gain, true), perfect ? 'perfect' : '', 5);
+}
+/* Auto clicker: acts as a manual click. Beat Sync adds one Perfect Tick per beat. */
+let autoAcc = 0;
+function autoClick(dt) {
+  if (C.autoRate <= 0) return;
+  const t = now();
+  autoAcc += C.autoRate * dt;
+  const n = Math.floor(autoAcc);
+  autoAcc -= n;
+  let gain = C.click * n, shown = 0;
+  if (C.autoSync && inZone(t)) {
+    const g = C.click * landPerfect(t);
+    gain += g; shown = g;
+    S.autoPerfects++;
+  }
+  if (!n && !shown) return;
+  const cnt = n + (shown ? 1 : 0);
+  earn(gain);
+  S.clicks += cnt; S.autoClicks += cnt; S.clickEarned += gain;
+  pressClock();
+  const [cx, cy] = clockCenter();
+  const jx = (Math.random() - .5) * 120, jy = (Math.random() - .5) * 120;
+  if (shown) spawnFloat(cx + jx, cy + jy, 'Auto Perfect +' + fmt(shown, true), 'perfect', 3);
+  else if (autoFloatAt < t) { autoFloatAt = t + 350; spawnFloat(cx + jx, cy + jy, '+' + fmt(gain, true), 'auto', 0); }
+}
+let autoFloatAt = 0;
 function clockCenter() {
   const r = stage.getBoundingClientRect(), c = clock.getBoundingClientRect();
   return [c.left - r.left + c.width / 2, c.top - r.top + c.height / 2];
@@ -1407,6 +1508,7 @@ document.addEventListener('keydown', e => {
 
 /* ---------- Golden chime ---------- */
 let chimeEl = null, nextChime = now() + 40000 + Math.random() * 40000;
+const chimeDelay = () => (60000 + Math.random() * 120000) * C.chimeRate;
 const BELL = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5a5.5 5.5 0 0 0-5.5 5.5v3.4L4.6 16h14.8l-1.9-3.6V9A5.5 5.5 0 0 0 12 3.5z" fill="#3A2504"/><circle cx="12" cy="18.6" r="2" fill="#3A2504"/></svg>`;
 function spawnChime() {
   const b = document.createElement('button');
@@ -1426,17 +1528,17 @@ function removeChime() {
   clearTimeout(chimeEl._timer);
   chimeEl.remove();
   chimeEl = null;
-  nextChime = now() + 60000 + Math.random() * 120000;
+  nextChime = now() + chimeDelay();
 }
 function catchChime() {
   S.chimes++;
   S.gems += 1;
   if (Math.random() < 0.55 && C.baseTps > 0) {
-    S.frenzyUntil = now() + 30000;
+    S.frenzyUntil = now() + C.frenzyLen;
     recalc();
-    toast('Frenzy · production and clicks x7 for 30 seconds · +1 gem');
+    toast(`Frenzy · production and clicks x7 for ${Math.round(C.frenzyLen / 1000)} seconds · +1 gem`);
   } else {
-    const gain = Math.min(S.ticks * 0.15, C.baseTps * 900) + 13;
+    const gain = Math.min(S.ticks * 0.15, C.income * 900) + 13;
     earn(gain);
     toast(`Lucky chime · +${fmt(gain)} ticks · +1 gem`);
   }
@@ -1447,6 +1549,7 @@ function catchChime() {
 function renderEffects() {
   const left = S.frenzyUntil - now();
   let h = '';
+  if (C.autoRate > 0) h += `<span class="pill good">Auto clicker ${fmt(C.autoRate, true)}/s${C.autoSync ? ' · synced' : ''}</span>`;
   if (left > 0) h += `<span class="pill">Frenzy x7 · ${Math.ceil(left / 1000)}s</span>`;
   if (streak > 0) h += `<span class="pill good">Perfect streak ${streak} · next click x${fmt(perfectMult(streak + 1), true)}</span>`;
   $('#effects').innerHTML = h;
@@ -1618,6 +1721,7 @@ function econ() {
   lastEcon = t;
   if (C.frenzy > 1 && t >= S.frenzyUntil) recalc();
   earn(C.tps * dt);
+  autoClick(dt);
   S.playTime += dt;
   if (streak > 0 && t - lastPerfect > BEAT_MS * 2 + 300) streak = 0;
 }
@@ -1632,7 +1736,7 @@ function ui() {
   if (uiCount % 4 === 0) renderRewind();
   if (uiCount % 7 === 0) { checkAchievements(); if (tab === 'stats') renderStats(); }
   if (!chimeEl && now() >= nextChime) spawnChime();
-  $('#tps').textContent = fmt(C.tps, true);
+  $('#tps').textContent = fmt(C.income, true);
   $('#cpc').textContent = fmt(C.click, true);
   if (tab === 'skins' && S.gems !== gemsShown) renderSkins();
   renderGems();
@@ -1642,7 +1746,7 @@ const countEl = $('#count'), unitEl = $('#unit');
 function frame(t) {
   const dt = Math.min((t - lastFrame) / 1000, .25);
   lastFrame = t;
-  const speed = 1 + Math.log10(1 + C.tps) * 0.8;
+  const speed = 1 + Math.log10(1 + C.income) * 0.8;
   secAngle += dt * 6 * speed;
   drawHands();
   if (MAIN.digits) {
@@ -1667,8 +1771,8 @@ function start(data) {
     if (saved) {
       S = sanitize(saved);
       recalc();
-      const away = Math.min(Math.max(0, (now() - S.lastSeen) / 1000), 8 * 3600);
-      offline = C.baseTps * away * 0.5;
+      const away = Math.min(Math.max(0, (now() - S.lastSeen) / 1000), C.offlineCap);
+      offline = (C.baseTps + C.autoRate * (C.click / C.frenzy)) * away * C.offline;
       if (offline > 0 && away > 30) { earn(offline); setTimeout(() => toast(`While you were away (${fmtTime(away)}) · +${fmt(offline)} ticks`), 400); }
     } else {
       setTimeout(() => toast('Click the clock to earn your first ticks'), 600);
