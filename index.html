@@ -1,0 +1,1696 @@
+<!doctype html><html lang="en"><head><title>Click-a-Clock</title><meta charset="utf-8"><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Unbounded:wght@500;700&family=Manrope:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: two-pane workbench. Left, the clock stands on an isometric floor. Right, an extruded slab panel holds the machinery tabs. Everything clickable is a 2.5D keycap with a visible side face. */
+:root {
+  --bg: #E3E9EF;
+  --grid: rgba(38, 66, 96, .075);
+  --surface: #F8FAFC;
+  --surface-2: #EDF1F5;
+  --side: #C0CBD7;
+  --line: #D5DDE6;
+  --ink: #16212D;
+  --muted: #5D6F82;
+  --brass: #D69B2D;
+  --brass-hi: #F3C86C;
+  --brass-side: #A06C14;
+  --brass-deep: #7E520C;
+  --brass-ink: #3A2504;
+  --brass-text: #94600C;
+  --good: #23805F;
+  --bad: #C2463B;
+  --bad-side: #8E2A21;
+  --focus: #2F6FD6;
+  --shadow: rgba(22, 33, 45, .16);
+  --shadow-strong: rgba(22, 33, 45, .34);
+  --enamel: #F7F4EC;
+  --enamel-edge: #E2DCCD;
+  --dial-ink: #1B2430;
+  --dial-dim: #C8C0AE;
+  --dial-lit: #A8710F;
+
+  --font-display: "Unbounded", "Arial Rounded MT Bold", "Trebuchet MS", sans-serif;
+  --font-body: "Manrope", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  --clock: clamp(220px, min(30vw, 44vh), 360px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E141B; --grid: rgba(150, 185, 220, .05); --surface: #1A2430; --surface-2: #141D27;
+    --side: #070B10; --line: #273444; --ink: #E6ECF2; --muted: #8B9CAE;
+    --brass: #E2A83E; --brass-hi: #F6D083; --brass-side: #8D5D0F; --brass-deep: #5E3D07;
+    --brass-text: #EAB458; --good: #4CC496; --bad: #E2675B; --bad-side: #7E241C; --focus: #6EA2FF;
+    --shadow: rgba(0, 0, 0, .45); --shadow-strong: rgba(0, 0, 0, .7);
+    --enamel: #ECE8DE; --enamel-edge: #CFC7B5;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E141B; --grid: rgba(150, 185, 220, .05); --surface: #1A2430; --surface-2: #141D27;
+  --side: #070B10; --line: #273444; --ink: #E6ECF2; --muted: #8B9CAE;
+  --brass: #E2A83E; --brass-hi: #F6D083; --brass-side: #8D5D0F; --brass-deep: #5E3D07;
+  --brass-text: #EAB458; --good: #4CC496; --bad: #E2675B; --bad-side: #7E241C; --focus: #6EA2FF;
+  --shadow: rgba(0, 0, 0, .45); --shadow-strong: rgba(0, 0, 0, .7);
+  --enamel: #ECE8DE; --enamel-edge: #CFC7B5;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.45;
+  -webkit-tap-highlight-color: transparent; overflow-x: hidden;
+}
+button { font: inherit; color: inherit; }
+button:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+
+.app {
+  height: 100%; max-width: 1320px; margin: 0 auto;
+  display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 22px;
+  padding-block: 18px 28px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+/* ---------- Stage ---------- */
+.stage {
+  position: relative; min-height: 0; overflow: hidden;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 18px 20px 16px; border-radius: 24px;
+  background-color: var(--surface-2);
+  background-image:
+    repeating-linear-gradient(30deg, var(--grid) 0 1px, transparent 1px 30px),
+    repeating-linear-gradient(150deg, var(--grid) 0 1px, transparent 1px 30px);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.stage-top { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.brand { display: flex; align-items: center; gap: 10px; font: 700 16px/1 var(--font-display); letter-spacing: -.01em; }
+.logo { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(155deg, var(--brass-hi), var(--brass)); box-shadow: 0 3px 0 var(--brass-side); display: grid; place-items: center; }
+.logo svg { width: 16px; height: 16px; }
+.saved { font: 500 12px var(--font-mono); color: var(--muted); }
+
+.readout { text-align: center; margin-top: 18px; position: relative; z-index: 2; }
+.count { font: 700 clamp(36px, 5.2vw, 60px)/1 var(--font-display); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.unit { font: 500 12px var(--font-mono); color: var(--muted); letter-spacing: .1em; text-transform: uppercase; margin-top: 8px; }
+.rate { margin-top: 10px; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.rate b { color: var(--ink); font-weight: 700; }
+.effects { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; min-height: 30px; margin-top: 10px; }
+.pill { font: 600 12px var(--font-mono); padding: 5px 11px; border-radius: 999px; background: var(--brass); color: var(--brass-ink); box-shadow: 0 3px 0 var(--brass-side); }
+
+.clock-zone { flex: 1; width: 100%; display: grid; place-items: center; min-height: calc(var(--clock) * 1.3 + 30px); }
+.clock {
+  --depth: 16px;
+  overflow: visible;
+  position: relative; width: var(--clock); height: var(--clock); margin-bottom: var(--depth);
+  border: 0; padding: 0; background: none; border-radius: 50%;
+  cursor: pointer; touch-action: manipulation; user-select: none; -webkit-user-select: none;
+}
+.clock:focus-visible { outline: none; }
+.clock:focus-visible .clock-body { outline: 3px solid var(--focus); outline-offset: 8px; }
+.clock-body {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: linear-gradient(155deg, var(--brass-hi) 0%, var(--brass) 44%, var(--brass-side) 100%);
+  box-shadow: 0 var(--depth) 0 var(--deep, var(--brass-deep)), 0 calc(var(--depth) + 28px) 38px -14px var(--shadow-strong);
+  transition: transform .07s ease-out, box-shadow .07s ease-out;
+}
+.clock:hover .clock-body { filter: brightness(1.04); }
+.clock.pressed .clock-body {
+  transform: translateY(11px);
+  box-shadow: 0 5px 0 var(--deep, var(--brass-deep)), 0 16px 24px -14px var(--shadow-strong);
+}
+.face {
+  position: absolute; inset: 6.5%; border-radius: 50%; overflow: hidden;
+  background: radial-gradient(circle at 36% 28%, #FFFFFF 0%, var(--enamel) 52%, var(--enamel-edge) 100%);
+  box-shadow: inset 0 9px 16px rgba(0, 0, 0, .18), inset 0 -2px 0 rgba(255, 255, 255, .55);
+}
+.face svg { width: 100%; height: 100%; display: block; }
+.glass { position: absolute; inset: 6.5%; border-radius: 50%; pointer-events: none;
+  background: linear-gradient(162deg, rgba(255,255,255,.5) 0%, rgba(255,255,255,0) 38%); }
+.tk { stroke: var(--dial-ink); stroke-linecap: round; }
+.nm { font: 700 11px var(--font-display); fill: var(--dial-dim); text-anchor: middle; dominant-baseline: central; transition: fill .3s; }
+.nm.lit { fill: var(--dial-lit); }
+.dial-name { font: 600 5.2px var(--font-mono); fill: var(--dial-ink); opacity: .55; letter-spacing: .18em; text-anchor: middle; }
+.dial-sub { font: 500 4.6px var(--font-mono); fill: var(--dial-ink); opacity: .45; letter-spacing: .1em; text-anchor: middle; }
+.hand { stroke: var(--dial-ink); stroke-linecap: round; }
+.hand-s { stroke: var(--dial-lit); stroke-linecap: round; }
+.cap-b { fill: var(--dial-lit); }
+.cap-i { fill: var(--dial-ink); }
+.hint { font: 500 12px var(--font-mono); color: var(--muted); text-align: center; }
+
+.float { position: absolute; z-index: 6; pointer-events: none; transform: translate(-50%, -50%);
+  font: 700 18px var(--font-display); color: var(--ink); text-shadow: 0 2px 0 var(--surface);
+  animation: floatUp .9s ease-out forwards; white-space: nowrap; }
+@keyframes floatUp { to { transform: translate(-50%, -170%); opacity: 0; } }
+.spark { position: absolute; z-index: 5; width: 7px; height: 7px; border-radius: 2px; pointer-events: none;
+  background: var(--brass); animation: spark .6s ease-out forwards; }
+@keyframes spark { to { transform: translate(var(--dx), var(--dy)) rotate(200deg); opacity: 0; } }
+
+.chime {
+  position: absolute; z-index: 7; width: 58px; height: 58px; border-radius: 50%; border: 0; padding: 0;
+  background: linear-gradient(160deg, var(--brass-hi), var(--brass));
+  box-shadow: 0 6px 0 var(--brass-side), 0 16px 22px -10px var(--shadow-strong);
+  display: grid; place-items: center; cursor: pointer;
+  animation: pop .3s ease-out, bob 1.6s .3s ease-in-out infinite;
+}
+.chime svg { width: 28px; height: 28px; }
+.chime:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--brass-side); }
+@keyframes bob { 50% { transform: translateY(-7px); } }
+@keyframes pop { from { transform: scale(.3); opacity: 0; } }
+
+/* ---------- Panel ---------- */
+.panel {
+  min-height: 0; display: flex; flex-direction: column;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 24px;
+  box-shadow: 0 8px 0 var(--side), 0 26px 40px -22px var(--shadow);
+}
+.tabs { display: flex; gap: 8px; padding: 14px 14px 16px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.tab {
+  display: flex; align-items: center; gap: 7px; white-space: nowrap; cursor: pointer;
+  font: 700 13px var(--font-body); padding: 9px 14px; border-radius: 11px;
+  border: 1px solid var(--line); background: var(--surface-2); color: var(--muted);
+  box-shadow: 0 3px 0 var(--side); transition: transform .06s, box-shadow .06s;
+}
+.tab:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--side); }
+.tab[aria-selected="true"] { background: var(--brass); color: var(--brass-ink); border-color: transparent; box-shadow: 0 3px 0 var(--brass-side); }
+.badge { min-width: 19px; height: 19px; padding: 0 6px; border-radius: 10px; display: grid; place-items: center;
+  background: var(--good); color: #fff; font: 700 11px var(--font-mono); }
+.tab-body { flex: 1; min-height: 0; overflow: auto; padding: 16px 16px 24px; }
+.view { display: flex; flex-direction: column; gap: 14px; }
+.sec-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.sec-title { font: 700 15px var(--font-display); letter-spacing: -.01em; }
+.sec-note { font: 500 12px var(--font-mono); color: var(--muted); }
+
+.seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 11px; background: var(--surface-2); border: 1px solid var(--line); }
+.seg button { border: 0; background: transparent; cursor: pointer; padding: 6px 11px; border-radius: 8px;
+  font: 600 12px var(--font-mono); color: var(--muted); }
+.seg button.on { background: var(--surface); color: var(--ink); box-shadow: 0 2px 0 var(--side); }
+
+.list { display: flex; flex-direction: column; gap: 12px; }
+.machine {
+  width: 100%; display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 14px; align-items: center;
+  padding: 12px 14px; text-align: left; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 15px;
+  box-shadow: 0 5px 0 var(--side); transition: transform .06s, box-shadow .06s;
+}
+.machine:not(.cant):not(.locked):hover { border-color: var(--brass); }
+.machine:not(.cant):not(.locked):active { transform: translateY(3px); box-shadow: 0 2px 0 var(--side); }
+.machine.cant { cursor: not-allowed; }
+.machine.locked { cursor: default; box-shadow: none; border-style: dashed; background: transparent; }
+.num {
+  width: 52px; height: 52px; border-radius: 14px; display: grid; place-items: center;
+  font: 700 14px var(--font-display); background: var(--surface-2); color: var(--muted);
+  box-shadow: 0 4px 0 var(--side), inset 0 0 0 1px var(--line);
+}
+.owned .num { background: linear-gradient(180deg, var(--brass-hi), var(--brass)); color: var(--brass-ink); box-shadow: 0 4px 0 var(--brass-side); }
+.locked .num { box-shadow: inset 0 0 0 1px var(--line); background: transparent; }
+.m-info { min-width: 0; }
+.m-name { font-weight: 700; }
+.m-desc { font-size: 13px; color: var(--muted); }
+.m-out { font: 500 12px var(--font-mono); color: var(--muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
+.m-right { text-align: right; }
+.m-count { font: 700 24px/1 var(--font-display); font-variant-numeric: tabular-nums; }
+.m-cost { font: 600 13px var(--font-mono); margin-top: 7px; color: var(--good); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.cant .m-cost, .locked .m-cost { color: var(--muted); }
+.cant .m-count { opacity: .75; }
+
+.ugrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px 12px; }
+.up {
+  display: flex; flex-direction: column; gap: 3px; text-align: left; cursor: pointer;
+  padding: 12px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 15px;
+  box-shadow: 0 5px 0 var(--side); transition: transform .06s, box-shadow .06s;
+}
+.up:not(.cant):hover { border-color: var(--brass); }
+.up:not(.cant):active { transform: translateY(3px); box-shadow: 0 2px 0 var(--side); }
+.up.cant { cursor: not-allowed; }
+.up .kind { font: 600 11px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--brass-text); }
+.up .u-name { font-weight: 700; }
+.up .u-desc { font-size: 13px; color: var(--muted); }
+.up .u-cost { margin-top: 6px; font: 600 13px var(--font-mono); color: var(--good); }
+.up.cant .u-cost { color: var(--muted); }
+.empty { padding: 26px 18px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 15px; }
+
+.rewind-card { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.tile { background: var(--surface-2); border-radius: 14px; padding: 12px 14px; min-width: 0; }
+.tile dt { font: 600 11px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.tile dd { margin: 4px 0 0; font: 700 22px var(--font-display); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.tile dd.sm { font: 700 16px var(--font-body); }
+.prose { color: var(--muted); max-width: 62ch; }
+.prose b { color: var(--ink); }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+.btn {
+  cursor: pointer; border: 0; padding: 12px 18px; border-radius: 12px;
+  font: 700 14px var(--font-body); background: var(--brass); color: var(--brass-ink);
+  box-shadow: 0 4px 0 var(--brass-side); transition: transform .06s, box-shadow .06s;
+}
+.btn:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 var(--brass-side); }
+.btn:disabled { cursor: not-allowed; background: var(--surface-2); color: var(--muted); box-shadow: 0 4px 0 var(--side); }
+.btn.ghost { background: var(--surface); color: var(--ink); border: 1px solid var(--line); box-shadow: 0 4px 0 var(--side); }
+.btn.ghost:active { box-shadow: 0 1px 0 var(--side); }
+.btn.danger { background: var(--bad); color: #fff; box-shadow: 0 4px 0 var(--bad-side); }
+.btn.danger:active { box-shadow: 0 1px 0 var(--bad-side); }
+.btn.sm { padding: 8px 13px; font-size: 13px; }
+
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 0; }
+.ach { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+.a { padding: 10px 12px; border-radius: 13px; border: 1px dashed var(--line); color: var(--muted); font-size: 12px; min-width: 0; }
+.a b { display: block; font-size: 13px; }
+.a.got { border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); box-shadow: 0 3px 0 var(--side); }
+.a.got b { color: var(--brass-text); }
+.a span { display: block; color: var(--muted); }
+textarea {
+  width: 100%; min-height: 76px; resize: vertical; padding: 10px 12px; border-radius: 12px;
+  border: 1px solid var(--line); background: var(--surface-2); color: var(--ink);
+  font: 500 12px var(--font-mono); word-break: break-all;
+}
+textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+hr { border: 0; border-top: 1px solid var(--line); margin: 6px 0; width: 100%; }
+
+.toasts { position: fixed; left: 0; right: 0; z-index: 30; pointer-events: none;
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.toast { max-width: 440px; padding: 10px 16px; border-radius: 12px; background: var(--ink); color: var(--surface);
+  font-weight: 600; font-size: 14px; box-shadow: 0 4px 0 var(--shadow-strong); animation: toastIn .25s ease-out; }
+@keyframes toastIn { from { transform: translateY(12px); opacity: 0; } }
+
+/* ---------- Theme switch ---------- */
+.top-r { display: flex; align-items: center; gap: 12px; }
+.theme { width: 58px; height: 30px; border-radius: 15px; border: 1px solid var(--line); background: var(--surface); box-shadow: 0 3px 0 var(--side); cursor: pointer; position: relative; padding: 0; transition: transform .06s, box-shadow .06s; }
+.theme:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--side); }
+.theme .knob { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: linear-gradient(160deg, var(--brass-hi), var(--brass)); box-shadow: 0 2px 0 var(--brass-side); display: grid; place-items: center; transition: transform .2s; }
+.theme .knob svg { width: 14px; height: 14px; fill: none; stroke: var(--brass-ink); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.theme .moon { display: none; }
+.theme[aria-pressed="true"] .moon { display: block; }
+.theme[aria-pressed="true"] .sun { display: none; }
+.theme[aria-pressed="true"] .knob { transform: translateX(28px); }
+
+/* ---------- Icons ---------- */
+.ic { display: block; flex: none; }
+.tab .ic { width: 16px; height: 16px; }
+.num .ic { width: 30px; height: 30px; }
+.up .kind { display: flex; align-items: center; gap: 6px; }
+.up .kind .ic { width: 15px; height: 15px; }
+.a-ic { display: block; width: 22px; height: 22px; margin-bottom: 6px; color: var(--muted); font-style: normal; }
+.a-ic svg { width: 100%; height: 100%; }
+.a.got .a-ic { color: var(--brass-text); }
+
+/* ---------- How to play ---------- */
+.how { background: var(--surface-2); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; font-size: 13px; }
+.how summary { cursor: pointer; font: 700 13px var(--font-body); list-style: none; display: flex; justify-content: space-between; }
+.how summary::-webkit-details-marker { display: none; }
+.how summary::after { content: "Hide"; font: 500 11px var(--font-mono); color: var(--muted); }
+.how:not([open]) summary::after { content: "Show"; }
+.how ul { margin: 10px 0 2px; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; color: var(--muted); }
+.how li b { color: var(--ink); }
+
+/* ---------- Beat ring (Perfect Tick) ---------- */
+.beat { position: absolute; left: -9%; top: -9%; width: 118%; height: 118%; pointer-events: none; z-index: 3; overflow: visible; }
+.beat .track { fill: none; stroke: var(--muted); stroke-width: .6; opacity: .4; stroke-dasharray: 1 2; }
+.beat .zone { fill: none; stroke: var(--good); stroke-width: 3.2; stroke-linecap: round; transition: stroke-width .12s; }
+.beat.hit .zone { stroke-width: 6.5; }
+.beat .dot { fill: var(--ink); stroke: var(--surface); stroke-width: 1; }
+.float.perfect { color: var(--good); font-size: 22px; }
+.pill.good { background: var(--surface); color: var(--good); border: 1px solid var(--line); box-shadow: 0 3px 0 var(--side); }
+
+/* ---------- Fire ---------- */
+:root { --fire-a: #FFE58A; --fire-b: #FF8A1F; --fire-c: #E2331A; --fire-d: #7A1208; --blue-a: #E8F6FF; --blue-b: #58B6FF; --blue-c: #2563EB; --blue-d: #14307A; }
+.flames { position: absolute; inset: 0; pointer-events: none; z-index: 0; opacity: 0; transition: opacity .8s; }
+.flames::before { content: ""; position: absolute; inset: -22%; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 130, 40, .5) 42%, rgba(255, 130, 40, 0) 70%); animation: halo 1.5s ease-in-out infinite alternate; }
+.clock[data-fire] .flames { opacity: 1; }
+.fl { position: absolute; left: 50%; top: 50%; width: 0; height: 0; }
+.fl i { position: absolute; left: 0; display: block; transform-origin: 50% 100%;
+  border-radius: 50% 50% 50% 50% / 68% 68% 32% 32%;
+  background: linear-gradient(to top, var(--fire-c) 0%, var(--fire-b) 45%, var(--fire-a) 100%);
+  filter: blur(1.2px); animation: flick var(--d, 1s) ease-in-out var(--dl, 0s) infinite alternate; }
+.ember { position: absolute; left: var(--x); top: 30%; width: 5px; height: 5px; border-radius: 50%;
+  background: var(--fire-a); box-shadow: 0 0 6px 2px var(--fire-b); opacity: 0; animation: rise var(--d) linear var(--dl) infinite; }
+@keyframes flick { 0% { transform: scale(1, .82) skewX(-4deg); } 50% { transform: scale(.9, 1.04) skewX(3deg); } 100% { transform: scale(1.05, 1.14) skewX(-2deg); } }
+@keyframes halo { to { opacity: .6; transform: scale(1.05); } }
+@keyframes rise { 0% { transform: translate(0, 0); opacity: 0; } 15% { opacity: 1; } 100% { transform: translate(var(--dx), -140px) scale(.3); opacity: 0; } }
+.clock[data-fire] { --deep: var(--fire-d); --dial-lit: #C2260E; }
+.clock[data-fire] .clock-body { background: linear-gradient(155deg, var(--fire-a) 0%, var(--fire-b) 40%, var(--fire-c) 78%, var(--fire-d) 100%); }
+.clock[data-fire] .face { background: radial-gradient(circle at 36% 28%, #FFF8E6 0%, #FFE2B0 55%, #F2A862 100%);
+  box-shadow: inset 0 9px 16px rgba(120, 20, 0, .28), inset 0 0 34px rgba(255, 90, 20, .45); }
+.clock[data-fire="3"] { --deep: var(--blue-d); --dial-lit: #1E4FC4; }
+.clock[data-fire="3"] .clock-body { background: linear-gradient(155deg, var(--blue-a) 0%, var(--blue-b) 40%, var(--blue-c) 78%, var(--blue-d) 100%); }
+.clock[data-fire="3"] .face { background: radial-gradient(circle at 36% 28%, #FFFFFF 0%, #E3F2FF 55%, #A9D2F5 100%);
+  box-shadow: inset 0 9px 16px rgba(10, 30, 120, .25), inset 0 0 34px rgba(60, 140, 255, .45); }
+.clock[data-fire="3"] .fl i { background: linear-gradient(to top, var(--blue-c) 0%, var(--blue-b) 45%, var(--blue-a) 100%); }
+.clock[data-fire="3"] .ember { background: var(--blue-a); box-shadow: 0 0 6px 2px var(--blue-b); }
+.clock[data-fire="3"] .flames::before { background: radial-gradient(circle, rgba(70, 150, 255, .5) 42%, rgba(70, 150, 255, 0) 70%); }
+@media (prefers-reduced-motion: reduce) {
+  .fl i, .flames::before { animation: none !important; }
+  .ember { display: none; }
+}
+
+/* ---------- Skins (placed after fire so skins win ties) ---------- */
+.gems { display: flex; align-items: center; gap: 6px; font: 700 13px var(--font-mono); padding: 5px 11px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 3px 0 var(--side); }
+.gems svg, .gem-badge svg { width: 15px; height: 15px; fill: none; stroke: var(--good); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.gem-badge { display: inline-flex; align-items: center; gap: 6px; font: 700 13px var(--font-mono); }
+
+.ln { fill: none; stroke: var(--dial-ink); }
+.ink { fill: var(--dial-ink); }
+.sg { fill: var(--lcd-off, #16231A); }
+.sg.on { fill: var(--lcd-on, #7CFF6B); filter: drop-shadow(0 0 2px var(--lcd-on, #7CFF6B)); }
+.lcd-t { fill: var(--lcd-on, #7CFF6B); opacity: .7; }
+.neon-t { stroke: #4DF3FF; stroke-linecap: round; }
+.neon-h { stroke: #FF3DCB; stroke-linecap: round; }
+.neon-m { stroke: #4DF3FF; stroke-linecap: round; }
+.neon-s { stroke: #FFE66B; stroke-linecap: round; }
+.neon-n.lit { filter: drop-shadow(0 0 3px #4DF3FF); }
+.neon-name { fill: #FF3DCB; font: 600 5.2px var(--font-mono); letter-spacing: .2em; text-anchor: middle; }
+.gear { fill: rgba(214, 155, 45, .16); stroke: #D69B2D; stroke-width: 1.4; stroke-linejoin: round; }
+.gear-in { fill: none; stroke: #D69B2D; stroke-width: 1; }
+.sk-b { stroke: #E6EBF2; }
+.sk-h { fill: none; stroke: #E6EBF2; stroke-width: 1.6; stroke-linejoin: round; }
+.sk-s { stroke: #FF5A6A; stroke-linecap: round; }
+.cos-h { stroke: #EDE9FF; stroke-linecap: round; }
+.cos-s { stroke: #FFD166; stroke-linecap: round; }
+.tw { animation: tw 3s ease-in-out infinite alternate; }
+@keyframes tw { to { opacity: .15; } }
+@media (prefers-reduced-motion: reduce) { .tw { animation: none; } }
+
+.sk[data-skin="minimal"] { --deep: #8C8C86; --dial-ink: #14161A; --dial-dim: #C4C4BD; --dial-lit: #E2362B; }
+.sk[data-skin="minimal"] .clock-body { background: linear-gradient(155deg, #FFFFFF, #E4E4DF 50%, #BDBDB7); }
+.sk[data-skin="minimal"] .face { background: radial-gradient(circle at 36% 28%, #FFFFFF, #F7F7F3 60%, #E9E9E3); box-shadow: inset 0 9px 16px rgba(0, 0, 0, .12); }
+
+.sk[data-skin="digital"] { --deep: #05070A; --lcd-on: #7CFF6B; --lcd-off: #15231A; --dial-ink: #7CFF6B; --dial-dim: #1E3324; --dial-lit: #7CFF6B; }
+.sk[data-skin="digital"] .clock-body { background: linear-gradient(155deg, #5B6572, #2A313A 55%, #11151A); }
+.sk[data-skin="digital"] .face { background: radial-gradient(circle at 36% 28%, #121A12, #060A06 70%); box-shadow: inset 0 9px 18px rgba(0, 0, 0, .7); }
+
+.sk[data-skin="antique"] { --deep: #22120A; --dial-ink: #3A2410; --dial-dim: #A58A5A; --dial-lit: #B3251A; }
+.sk[data-skin="antique"] .clock-body { background: linear-gradient(155deg, #A9743B, #6B4220 55%, #3B2210); }
+.sk[data-skin="antique"] .face { background: radial-gradient(circle at 36% 28%, #F3E6C4 0%, #E2CD98 55%, #B99452 100%); box-shadow: inset 0 9px 16px rgba(60, 30, 5, .35), inset 0 0 28px rgba(90, 50, 10, .35); }
+
+.sk[data-skin="neon"] { --deep: #03040C; --dial-ink: #4DF3FF; --dial-dim: #3A4478; --dial-lit: #4DF3FF; }
+.sk[data-skin="neon"] .clock-body { background: linear-gradient(155deg, #2B3166, #10142E 55%, #070A1B); }
+.sk[data-skin="neon"] .face { background: radial-gradient(circle at 36% 28%, #141A4A, #070B24 65%, #04061A); box-shadow: inset 0 9px 18px rgba(0, 0, 0, .6); }
+
+.sk[data-skin="skeleton"] { --deep: #4A525E; --dial-ink: #E6EBF2; --dial-dim: #4A2C34; --dial-lit: #FF5A6A; }
+.sk[data-skin="skeleton"] .clock-body { background: linear-gradient(155deg, #F1F4F8, #B4BCC8 50%, #7D8693); }
+.sk[data-skin="skeleton"] .face { background: radial-gradient(circle at 36% 28%, #2A3649, #121925 70%); box-shadow: inset 0 9px 18px rgba(0, 0, 0, .6); }
+
+.sk[data-skin="cosmic"] { --deep: #0A0522; --dial-ink: #EDE9FF; --dial-dim: #5A4FA0; --dial-lit: #FFD166; }
+.sk[data-skin="cosmic"] .clock-body { background: linear-gradient(155deg, #8F7BFF, #4328B8 50%, #150C48); }
+.sk[data-skin="cosmic"] .face { background: radial-gradient(circle at 36% 28%, #2A1D66, #0E0A2C 60%, #04030F); box-shadow: inset 0 9px 18px rgba(0, 0, 0, .6); }
+.sk[data-skin="cosmic"] .dial-sub, .sk[data-skin="skeleton"] .dial-sub { fill: #EDE9FF; }
+
+.skin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px 14px; }
+.skin { display: flex; flex-direction: column; gap: 10px; padding: 14px; min-width: 0; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); box-shadow: 0 5px 0 var(--side); }
+.skin.eq { border-color: var(--brass); }
+.skin h3 { margin: 0; font: 700 14px var(--font-display); }
+.skin p { margin: 0; font-size: 13px; color: var(--muted); flex: 1; }
+.skin .btn { width: 100%; }
+.pv-wrap { display: grid; place-items: center; padding: 14px 0 12px; background: var(--surface-2); border-radius: 12px; }
+.pclock { position: relative; width: 104px; height: 104px; margin-bottom: 8px; }
+.pclock .clock-body { box-shadow: 0 8px 0 var(--deep, var(--brass-deep)); }
+
+@media (max-width: 860px) {
+  html, body { height: auto; }
+  .app { height: auto; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  .stage { --clock: min(260px, 64vw); }
+  .tab-body { overflow: visible; }
+  .rewind-card { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 460px) {
+  .machine { grid-template-columns: 44px minmax(0, 1fr) auto; gap: 11px; padding: 11px 12px; }
+  .num { width: 44px; height: 44px; font-size: 12px; }
+  .m-desc { display: none; }
+  .stats { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .float, .spark { display: none; }
+  .chime { animation: none; }
+  *, *::before, *::after { transition: none !important; }
+}
+</style>
+
+<div class="app">
+  <section class="stage" id="stage" aria-label="Clock">
+    <div class="stage-top">
+      <div class="brand">
+        <span class="logo" aria-hidden="true"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.2" fill="none" stroke="#3A2504" stroke-width="1.6"/><path d="M8 4.4V8l2.6 1.6" fill="none" stroke="#3A2504" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+        Click-a-Clock
+      </div>
+      <div class="top-r">
+        <span class="gems" title="Gems. Earn them from achievements, chimes, streaks and rewinds."><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12l4 5-10 12L2 9z"/><path d="M2 9h20M9 4l3 5 3-5M12 9v12"/></svg><span id="gemN">0</span></span>
+        <span class="saved" id="saved">Autosaves every 10s</span>
+        <button class="theme" id="themeBtn" aria-pressed="false" aria-label="Switch to dark mode">
+          <span class="knob">
+            <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg>
+            <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>
+          </span>
+        </button>
+      </div>
+    </div>
+
+    <div class="readout">
+      <div class="count" id="count">0</div>
+      <div class="unit" id="unit">ticks</div>
+      <div class="rate"><b id="tps">0</b> per second · <b id="cpc">1</b> per click</div>
+      <div class="effects" id="effects"></div>
+    </div>
+
+    <div class="clock-zone">
+      <button class="clock" id="clock" aria-label="Wind the clock">
+        <span class="flames" id="flames" aria-hidden="true"></span>
+        <span class="clock-body">
+          <span class="face"><svg id="dial" viewBox="0 0 200 200" aria-hidden="true"></svg></span>
+          <span class="glass"></span>
+        </span>
+        <svg class="beat" id="beat" viewBox="0 0 100 100" aria-hidden="true">
+          <circle class="track" cx="50" cy="50" r="47"/>
+          <path class="zone" id="zone" d=""/>
+          <g id="marker"><circle class="dot" cx="50" cy="3" r="2.8"/></g>
+        </svg>
+      </button>
+    </div>
+    <div class="hint">Click the clock or press Space. Click while the marker is in the green zone for a Perfect Tick.</div>
+  </section>
+
+  <section class="panel" aria-label="Workshop">
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" data-tab="machines" aria-selected="true">Machines</button>
+      <button class="tab" role="tab" data-tab="upgrades" aria-selected="false">Upgrades <span class="badge" id="upBadge" hidden>0</span></button>
+      <button class="tab" role="tab" data-tab="skins" aria-selected="false">Skins</button>
+      <button class="tab" role="tab" data-tab="rewind" aria-selected="false">Rewind <span class="badge" id="rwBadge" hidden>0</span></button>
+      <button class="tab" role="tab" data-tab="stats" aria-selected="false">Stats</button>
+    </div>
+    <div class="tab-body" id="tabBody">
+      <div class="view" data-view="machines">
+        <div class="sec-head">
+          <span class="sec-title">Machines</span>
+          <div class="seg" id="buySeg" aria-label="Buy amount">
+            <button data-buy="1" class="on">x1</button><button data-buy="10">x10</button><button data-buy="100">x100</button><button data-buy="max">Max</button>
+          </div>
+        </div>
+        <details class="how" open>
+          <summary>How to play</summary>
+          <ul>
+            <li><b>Click</b> the clock to earn ticks.</li>
+            <li><b>Machines</b> make ticks every second, even when you are not clicking. Each one lights a numeral on the dial.</li>
+            <li><b>Upgrades</b> multiply your clicks or your machines.</li>
+            <li><b>Perfect Tick:</b> click while the marker is in the green zone. That click pays 2.5x, plus 0.5x for every Perfect in a row, up to 14.5x. Miss a beat for 6 seconds and the streak resets.</li>
+            <li><b>Fire:</b> at 10K lifetime ticks the clock ignites. It burns hotter at 10M and turns blue at 1T.</li>
+            <li><b>Gems</b> come from achievements, golden chimes, Perfect streaks and rewinds. Spend them in the Skins tab.</li>
+            <li><b>Rewind</b> resets your run for gears, a permanent +5% production each.</li>
+          </ul>
+        </details>
+        <div class="list" id="machines"></div>
+      </div>
+
+      <div class="view" data-view="upgrades" hidden>
+        <div class="sec-head">
+          <span class="sec-title">Upgrades</span>
+          <span class="sec-note" id="upInstalled">0 installed</span>
+        </div>
+        <div class="ugrid" id="upgrades"></div>
+      </div>
+
+      <div class="view" data-view="skins" hidden>
+        <div class="sec-head">
+          <span class="sec-title">Clock skins</span>
+          <span class="gem-badge"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12l4 5-10 12L2 9z"/><path d="M2 9h20M9 4l3 5 3-5M12 9v12"/></svg><span id="skinGems">0</span> gems</span>
+        </div>
+        <details class="how" open>
+          <summary>How to earn gems</summary>
+          <ul>
+            <li><b>Achievements:</b> 3 gems each.</li>
+            <li><b>Golden chime:</b> 1 gem each time you catch one.</li>
+            <li><b>Perfect streak:</b> 2 gems at every 10 Perfect Ticks in a row.</li>
+            <li><b>Rewind:</b> 5 gems each time you rewind time.</li>
+            <li>Gems and skins stay after a rewind.</li>
+          </ul>
+        </details>
+        <div class="skin-grid" id="skinGrid"></div>
+      </div>
+
+      <div class="view" data-view="rewind" hidden>
+        <div class="sec-head"><span class="sec-title">Rewind time</span></div>
+        <dl class="rewind-card">
+          <div class="tile"><dt>Gears owned</dt><dd id="rwGears">0</dd></div>
+          <div class="tile"><dt>Gear bonus</dt><dd id="rwBonus">+0%</dd></div>
+          <div class="tile"><dt>Gained on rewind</dt><dd id="rwPending">0</dd></div>
+        </dl>
+        <p class="prose">Rewinding resets your ticks, machines and upgrades. You keep <b>gears</b> and achievements. Each gear adds <b>5%</b> to all production and clicks. Gears come from lifetime ticks: the first one at 1 billion, ten at 1 trillion, a hundred at 1 quadrillion.</p>
+        <p class="prose" id="rwNext"></p>
+        <div class="row" id="rwRow">
+          <button class="btn" id="rwBtn" disabled>Rewind time</button>
+        </div>
+        <div class="row" id="rwConfirm" hidden>
+          <span class="prose">Reset this run for <b id="rwConfirmN">0</b> gears?</span>
+          <button class="btn" id="rwYes">Yes, rewind</button>
+          <button class="btn ghost" id="rwNo">Cancel</button>
+        </div>
+      </div>
+
+      <div class="view" data-view="stats" hidden>
+        <div class="sec-head"><span class="sec-title">Statistics</span></div>
+        <dl class="stats" id="stats"></dl>
+        <div class="sec-head"><span class="sec-title">Achievements</span><span class="sec-note" id="achNote"></span></div>
+        <div class="ach" id="ach"></div>
+        <hr>
+        <div class="sec-head"><span class="sec-title">Settings</span></div>
+        <div class="row">
+          <span class="sec-note">Notation</span>
+          <div class="seg" id="notSeg"><button data-not="short" class="on">1.23M</button><button data-not="sci">1.23e6</button></div>
+        </div>
+        <div class="row">
+          <button class="btn ghost sm" id="exportBtn">Export save</button>
+          <button class="btn ghost sm" id="importBtn">Import save</button>
+          <button class="btn ghost sm" id="resetBtn">Hard reset</button>
+        </div>
+        <div id="exportBox" class="view" hidden>
+          <label class="sec-note" for="exportTa">Save code</label>
+          <textarea id="exportTa" readonly></textarea>
+          <div class="row"><button class="btn sm" id="copyBtn">Copy code</button></div>
+        </div>
+        <div id="importBox" class="view" hidden>
+          <label class="sec-note" for="importTa">Paste a save code</label>
+          <textarea id="importTa"></textarea>
+          <div class="row"><button class="btn sm" id="loadBtn">Load save</button></div>
+        </div>
+        <div class="row" id="resetConfirm" hidden>
+          <span class="prose">Delete everything, including gears and achievements?</span>
+          <button class="btn danger sm" id="resetYes">Delete save</button>
+          <button class="btn ghost sm" id="resetNo">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script>
+(() => {
+'use strict';
+const $ = s => document.querySelector(s);
+const now = () => Date.now();
+const SAVE_KEY = 'click-a-clock-v1';
+let reduceMotion = false;
+try { reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+
+/* ---------- Data ---------- */
+const ROMAN = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII'];
+const MACHINES = [
+  { name: 'Sundial',           desc: 'Counts the hours, slowly.',          cost: 15,     tps: 0.1 },
+  { name: 'Hourglass',         desc: 'The sand never stops falling.',      cost: 100,    tps: 1 },
+  { name: 'Pocket Watch',      desc: 'A tick in every pocket.',            cost: 1100,   tps: 8 },
+  { name: 'Cuckoo Clock',      desc: 'Loud, punctual, productive.',        cost: 12000,  tps: 47 },
+  { name: 'Grandfather Clock', desc: 'Long pendulum, steady swing.',       cost: 1.3e5,  tps: 260 },
+  { name: 'Clock Tower',       desc: 'The whole town hears it chime.',     cost: 1.4e6,  tps: 1400 },
+  { name: 'Atomic Clock',      desc: 'Cesium-133 at 9,192,631,770 Hz.',    cost: 2e7,    tps: 7800 },
+  { name: 'Pulsar Beacon',     desc: 'A spinning star keeps the beat.',    cost: 3.3e8,  tps: 44000 },
+  { name: 'Time Dilator',      desc: 'Stretches one second into an hour.', cost: 5.1e9,  tps: 2.6e5 },
+  { name: 'Chrono Forge',      desc: 'Smelts raw moments into ticks.',     cost: 7.5e10, tps: 1.6e6 },
+  { name: 'Singularity Clock', desc: 'Time bends around its hands.',       cost: 1e12,   tps: 1e7 },
+  { name: 'Big Bang Clock',    desc: 'Started counting at second zero.',   cost: 1.4e13, tps: 6.5e7 },
+];
+const GROWTH = 1.15;
+
+const UPG = [];
+[
+  ['c1','Tempered Spring','Each click earns 2x ticks.',100,'clickMult',2],
+  ['c2','Brass Spring','Each click earns 2x ticks.',600,'clickMult',2],
+  ['c3','Steel Mainspring','Each click earns 2x ticks.',1e4,'clickMult',2],
+  ['c4','Escapement','Each click also earns +1% of your ticks per second.',5e4,'clickPct',0.01],
+  ['c5','Lever Escapement','Each click earns another +1% of your ticks per second.',5e6,'clickPct',0.01],
+  ['c6','Tourbillon','Each click earns another +1% of your ticks per second.',5e8,'clickPct',0.01],
+  ['c7','Remontoire','Each click earns another +1% of your ticks per second.',5e10,'clickPct',0.01],
+  ['c8','Constant Force','Each click earns another +1% of your ticks per second.',5e12,'clickPct',0.01],
+].forEach(([id,name,desc,cost,type,v]) => UPG.push({ id, name, desc, cost, type, v, kind: 'Click upgrade', unlock: s => s.runEarned >= cost * 0.4 }));
+[
+  ['g1','Synchronized Gears','Every machine makes 1.5x ticks.',1e6,1.5],
+  ['g2','Jeweled Bearings','Every machine makes 1.5x ticks.',1e9,1.5],
+  ['g3','Quartz Regulator','Every machine makes 2x ticks.',1e12,2],
+  ['g4','Cesium Standard','Every machine makes 2x ticks.',1e15,2],
+  ['g5','Spacetime Lattice','Every machine makes 3x ticks.',1e18,3],
+  ['g6','Eternal Mainspring','Every machine makes 3x ticks.',1e22,3],
+].forEach(([id,name,desc,cost,v]) => UPG.push({ id, name, desc, cost, type: 'global', v, kind: 'Global upgrade', unlock: s => s.runEarned >= cost * 0.4 }));
+[
+  ['b1','Metronome','The green Perfect Tick zone is 50% wider.',2000],
+  ['b2','Chronograph','The green Perfect Tick zone is another 50% wider.',2e5],
+].forEach(([id,name,desc,cost]) => UPG.push({ id, name, desc, cost, type: 'beat', v: 1.5, kind: 'Rhythm upgrade', unlock: s => s.runEarned >= cost * 0.4 }));
+const TIER_AT = [1, 10, 25, 50, 100, 150, 200];
+const TIER_COST = [10, 50, 500, 5e4, 5e6, 5e8, 5e10];
+const TIER_NAME = ['Tune-up','Recalibration','Precision Fit','Master Service','Chronometer Grade','Observatory Grade','Eternal Grade'];
+MACHINES.forEach((m, i) => TIER_AT.forEach((at, k) => UPG.push({
+  id: `m${i}t${k}`, name: `${m.name}: ${TIER_NAME[k]}`, desc: `Every ${m.name} makes 2x ticks.`,
+  cost: m.cost * TIER_COST[k], type: 'gen', i, v: 2, kind: `${m.name} upgrade`,
+  unlock: s => s.owned[i] >= at,
+})));
+const UPG_BY_ID = Object.fromEntries(UPG.map(u => [u.id, u]));
+
+const totalOwned = s => s.owned.reduce((a, b) => a + b, 0);
+const ACH = [
+  ['e1','Wound Up','Earn 1,000 ticks', s => s.lifetimeEarned >= 1e3],
+  ['e2','Full Hour','Earn 1 million ticks', s => s.lifetimeEarned >= 1e6],
+  ['e3','Long Day','Earn 1 billion ticks', s => s.lifetimeEarned >= 1e9],
+  ['e4','Lost Weekend','Earn 1 trillion ticks', s => s.lifetimeEarned >= 1e12],
+  ['e5','Deep Time','Earn 1 quadrillion ticks', s => s.lifetimeEarned >= 1e15],
+  ['e6','Geological Era','Earn 1 quintillion ticks', s => s.lifetimeEarned >= 1e18],
+  ['e7','Cosmic Calendar','Earn 1 sextillion ticks', s => s.lifetimeEarned >= 1e21],
+  ['e8','Heat Death Pending','Earn 1 septillion ticks', s => s.lifetimeEarned >= 1e24],
+  ['e9','Beyond Counting','Earn 1 nonillion ticks', s => s.lifetimeEarned >= 1e30],
+  ['e10','Number Overflow','Earn 1 quattuordecillion ticks', s => s.lifetimeEarned >= 1e45],
+  ['k1','Tap Tap','Click 100 times', s => s.clicks >= 100],
+  ['k2','Restless Finger','Click 1,000 times', s => s.clicks >= 1000],
+  ['k3','Human Metronome','Click 10,000 times', s => s.clicks >= 10000],
+  ['m1','Workshop','Own 10 machines', s => totalOwned(s) >= 10],
+  ['m2','Factory Floor','Own 100 machines', s => totalOwned(s) >= 100],
+  ['m3','Clockworks','Own 250 machines', s => totalOwned(s) >= 250],
+  ['m4','Time Industry','Own 500 machines', s => totalOwned(s) >= 500],
+  ['m5','Horology Empire','Own 1,000 machines', s => totalOwned(s) >= 1000],
+  ['m6','Full Dial','Own one of every machine', s => s.owned.every(n => n > 0)],
+  ['p1','Steady Pulse','Reach 10 ticks per second', () => C.baseTps >= 10],
+  ['p2','Racing Hands','Reach 1,000 ticks per second', () => C.baseTps >= 1e3],
+  ['p3','Blur of Seconds','Reach 1 million per second', () => C.baseTps >= 1e6],
+  ['p4','Timequake','Reach 1 billion per second', () => C.baseTps >= 1e9],
+  ['p5','Clock Storm','Reach 1 trillion per second', () => C.baseTps >= 1e12],
+  ['h1','Lucky Chime','Catch a golden chime', s => s.chimes >= 1],
+  ['h2','Bell Ringer','Catch 10 golden chimes', s => s.chimes >= 10],
+  ['u1','Tinkerer','Install 10 upgrades', s => s.upgrades.length >= 10],
+  ['u2','Master Watchmaker','Install 50 upgrades', s => s.upgrades.length >= 50],
+  ['r1','Second Chance','Rewind time once', s => s.rewinds >= 1],
+  ['r2','Loop Veteran','Rewind time 5 times', s => s.rewinds >= 5],
+  ['b1','On Beat','Land your first Perfect Tick', s => s.perfects >= 1],
+  ['b2','Steady Hand','Land 10 Perfect Ticks in a row', s => s.bestStreak >= 10],
+  ['b3','Perfect Rhythm','Land 25 Perfect Ticks in a row', s => s.bestStreak >= 25],
+  ['f1','Burning Hot','Reach 10,000 lifetime ticks and set the clock on fire', s => s.lifetimeEarned >= 1e4],
+].map(([id, name, desc, test]) => ({ id, name, desc, test }));
+
+/* ---------- Icons ---------- */
+const svg = body => `<svg viewBox="0 0 24 24" class="ic" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+const MICON = [
+  svg('<ellipse cx="12" cy="16.5" rx="9" ry="4.5"/><path d="M12 16.5V8l5 8.5z" fill="currentColor"/>'),
+  svg('<path d="M6 3h12M6 21h12"/><path d="M7.5 3v3l4.5 6-4.5 6v3M16.5 3v3L12 12l4.5 6v3"/><path d="M9.5 19h5L12 16z" fill="currentColor"/>'),
+  svg('<circle cx="12" cy="14" r="7"/><circle cx="12" cy="3.6" r="1.6"/><path d="M12 5.2V7M12 14v-3.5M12 14l2.5 1.5"/>'),
+  svg('<path d="M3.5 11L12 3.5 20.5 11"/><rect x="5.5" y="11" width="13" height="9.5" rx="1.5"/><circle cx="12" cy="15.5" r="2.6"/><path d="M12 15.5v-1.4M12 15.5l1 .8"/>'),
+  svg('<rect x="7" y="2.5" width="10" height="19" rx="1.5"/><circle cx="12" cy="8" r="2.8"/><path d="M12 11.5v4"/><circle cx="12" cy="17.4" r="1.6" fill="currentColor"/>'),
+  svg('<path d="M12 2.5l5 5.5H7z"/><rect x="8" y="8" width="8" height="13.5"/><circle cx="12" cy="12.5" r="2.6"/><path d="M12 12.5v-1.3M12 12.5l1 .7M5 21.5h14"/>'),
+  svg('<circle cx="12" cy="12" r="1.8" fill="currentColor"/><ellipse cx="12" cy="12" rx="9.5" ry="3.8"/><ellipse cx="12" cy="12" rx="9.5" ry="3.8" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="9.5" ry="3.8" transform="rotate(120 12 12)"/>'),
+  svg('<circle cx="12" cy="12" r="2.6" fill="currentColor"/><path d="M12 2v6M12 16v6"/><ellipse cx="12" cy="12" rx="8.5" ry="2.6" transform="rotate(-20 12 12)"/>'),
+  svg('<circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="12" cy="12" r="5.5"/><circle cx="12" cy="12" r="9" stroke-dasharray="2.5 3"/>'),
+  svg('<path d="M3.5 8h13.5c0 3.2-2 4.5-4.5 4.5V16h3v3H8v-3h3v-3.5C7 12.5 3.5 11 3.5 8z"/><path d="M19.5 4l.6 2M21.5 7.5l-2 .4M17.5 3.5l.2 1.8"/>'),
+  svg('<circle cx="12" cy="12" r="3.2" fill="currentColor"/><ellipse cx="12" cy="12" rx="10" ry="3.6" transform="rotate(-25 12 12)"/>'),
+  svg('<circle cx="12" cy="12" r="3.2" fill="currentColor"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l2.8 2.8M16.2 16.2L19 19M19 5l-2.8 2.8M7.8 16.2L5 19"/>'),
+];
+const ICONS = {
+  machines: svg('<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/>'),
+  upgrades: svg('<path d="M5 14l7-7 7 7M5 20l7-7 7 7"/>'),
+  rewind: svg('<path d="M4 12a8 8 0 1 0 2.5-5.8"/><path d="M4 4v4.5h4.5"/>'),
+  stats: svg('<path d="M5 20V12M12 20V5M19 20v-9"/>'),
+  click: svg('<path d="M5 3l13 8.5-5.6 1.4L9.8 19z" fill="currentColor"/>'),
+  global: svg('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>'),
+  beat: svg('<path d="M8 21h8l-2.5-16h-3z"/><path d="M12 17L16 8"/><circle cx="16" cy="8" r="1.4" fill="currentColor"/>'),
+  coin: svg('<circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/>'),
+  bell: svg('<path d="M6 17h12l-1.6-3V10a4.4 4.4 0 0 0-8.8 0v4z"/><path d="M10 20h4"/>'),
+  bolt: svg('<path d="M13 2L5 13.5h6L10 22l9-12h-6.5z"/>'),
+  fire: svg('<path d="M12 3c1 4 5 5.5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 1-9z"/>'),
+  skins: svg('<rect x="3.5" y="3.5" width="17" height="17" rx="4"/><circle cx="12" cy="12" r="4"/><path d="M12 10v2l1.3.8"/>'),
+};
+const ACH_ICON = { e: 'coin', k: 'click', m: 'machines', p: 'bolt', h: 'bell', u: 'upgrades', r: 'rewind', b: 'beat', f: 'fire' };
+const upIcon = u => u.type === 'gen' ? MICON[u.i] : u.type === 'global' ? ICONS.global : u.type === 'beat' ? ICONS.beat : ICONS.click;
+
+/* ---------- Number formatting ---------- */
+const SUF = ['','K','M','B','T','Qa','Qi','Sx','Sp','Oc','No','Dc','UDc','DDc','TDc','QaDc','QiDc','SxDc','SpDc','OcDc','NoDc','Vg','UVg','DVg','TVg','QaVg','QiVg','SxVg','SpVg','OcVg','NoVg','Tg'];
+const NAMES = ['','thousand','million','billion','trillion','quadrillion','quintillion','sextillion','septillion','octillion','nonillion','decillion','undecillion','duodecillion','tredecillion','quattuordecillion','quindecillion','sexdecillion','septendecillion','octodecillion','novemdecillion','vigintillion','unvigintillion','duovigintillion','trevigintillion','quattuorvigintillion','quinvigintillion','sexvigintillion','septenvigintillion','octovigintillion','novemvigintillion','trigintillion'];
+
+function sci(n, d = 2) {
+  let e = Math.floor(Math.log10(n));
+  let s = (n / Math.pow(10, e)).toFixed(d);
+  if (parseFloat(s) >= 10) { e++; s = (n / Math.pow(10, e)).toFixed(d); }
+  return s + 'e' + e;
+}
+function fmt(n, dec) {
+  if (!isFinite(n)) return 'Infinity';
+  if (n < 0) n = 0;
+  if (n < 1000) {
+    if (dec && n < 100 && Math.abs(n - Math.round(n)) > 1e-9) return (n < 10 ? n.toFixed(2) : n.toFixed(1)).replace(/0+$/, '').replace(/\.$/, '');
+    return String(Math.floor(n));
+  }
+  if (S.notation === 'sci') return sci(n);
+  let t = Math.floor(Math.log10(n) / 3);
+  let m = n / Math.pow(10, t * 3);
+  if (m >= 999.995) { t++; m /= 1000; }
+  if (t >= SUF.length) return sci(n);
+  return m.toFixed(m < 10 ? 2 : m < 100 ? 1 : 0) + SUF[t];
+}
+function fmtBig(n) {
+  if (!isFinite(n)) return ['Infinity', 'ticks'];
+  if (n < 1e6) return [Math.floor(n).toLocaleString('en-US'), 'ticks'];
+  let t = Math.floor(Math.log10(n) / 3);
+  if (S.notation === 'sci' || t >= NAMES.length) return [sci(n, 3), 'ticks'];
+  let m = n / Math.pow(10, t * 3);
+  if (m >= 999.9995) { t++; m /= 1000; }
+  return [m.toFixed(3), NAMES[t] + ' ticks'];
+}
+function fmtTime(sec) {
+  sec = Math.floor(sec);
+  const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60;
+  return h ? `${h}h ${m}m` : m ? `${m}m ${s}s` : `${s}s`;
+}
+
+/* ---------- State ---------- */
+const DEFAULT = () => ({
+  v: 1, ticks: 0, runEarned: 0, lifetimeEarned: 0, clicks: 0, clickEarned: 0,
+  owned: Array(12).fill(0), upgrades: [], achievements: [],
+  gears: 0, rewinds: 0, chimes: 0, playTime: 0, frenzyUntil: 0, perfects: 0, bestStreak: 0, gems: 0, skin: 'brass', skins: [],
+  notation: 'short', buyAmt: 1, lastSeen: now(), created: now(),
+});
+function sanitize(o) {
+  const d = DEFAULT();
+  if (!o || typeof o !== 'object') return d;
+  for (const k in d) {
+    if (o[k] === undefined) continue;
+    if (Array.isArray(d[k])) { if (Array.isArray(o[k])) d[k] = o[k].slice(); }
+    else if (k === 'buyAmt') { if ([1, 10, 100, 'max'].includes(o[k])) d[k] = o[k]; }
+    else if (typeof o[k] === typeof d[k] && (typeof o[k] !== 'number' || isFinite(o[k]))) d[k] = o[k];
+  }
+  d.owned = Array.from({ length: 12 }, (_, i) => Math.max(0, Math.floor(Number(d.owned[i]) || 0)));
+  d.upgrades = d.upgrades.filter(id => UPG_BY_ID[id]);
+  d.achievements = d.achievements.filter(id => ACH.some(a => a.id === id));
+  d.gems = Math.max(0, Math.floor(d.gems));
+  d.skins = d.skins.filter(id => SKIN_BY_ID[id] && id !== 'brass');
+  if (!SKIN_BY_ID[d.skin] || (d.skin !== 'brass' && !d.skins.includes(d.skin))) d.skin = 'brass';
+  return d;
+}
+
+let S = DEFAULT();
+const C = { tps: 0, baseTps: 0, click: 1, each: Array(12).fill(0), global: 1, frenzy: 1, gearMult: 1 };
+
+function recalc() {
+  let clickMult = 1, clickPct = 0, global = 1, win = 1;
+  const genMult = Array(12).fill(1);
+  for (const id of S.upgrades) {
+    const u = UPG_BY_ID[id];
+    if (u.type === 'clickMult') clickMult *= u.v;
+    else if (u.type === 'clickPct') clickPct += u.v;
+    else if (u.type === 'global') global *= u.v;
+    else if (u.type === 'gen') genMult[u.i] *= u.v;
+    else if (u.type === 'beat') win *= u.v;
+  }
+  C.window = 0.06 * win;
+  drawZone();
+  C.gearMult = 1 + S.gears * 0.05;
+  C.global = global * C.gearMult * (1 + S.achievements.length * 0.01);
+  let base = 0;
+  MACHINES.forEach((m, i) => { C.each[i] = m.tps * genMult[i] * C.global; base += C.each[i] * S.owned[i]; });
+  C.baseTps = base;
+  C.frenzy = now() < S.frenzyUntil ? 7 : 1;
+  C.tps = base * C.frenzy;
+  C.click = (clickMult * C.gearMult + base * clickPct) * C.frenzy;
+}
+function earn(x) { S.ticks += x; S.runEarned += x; S.lifetimeEarned += x; }
+
+function unitCost(i) { return MACHINES[i].cost * Math.pow(GROWTH, S.owned[i]); }
+function costFor(i, n) { return unitCost(i) * (Math.pow(GROWTH, n) - 1) / (GROWTH - 1); }
+function maxAffordable(i) { return Math.max(0, Math.floor(Math.log(S.ticks * (GROWTH - 1) / unitCost(i) + 1) / Math.log(GROWTH))); }
+function buyCount(i) { return S.buyAmt === 'max' ? maxAffordable(i) : S.buyAmt; }
+
+const gearsFor = life => Math.floor(Math.cbrt(life / 1e9));
+const pendingGears = () => Math.max(0, gearsFor(S.lifetimeEarned) - S.gears);
+
+/* ---------- Dial and skins ---------- */
+const svgNS = 'http://www.w3.org/2000/svg';
+let uid = 0;
+function el(tag, attrs, parent) {
+  const n = document.createElementNS(svgNS, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(n);
+  return n;
+}
+const ang = (r, deg) => [100 + r * Math.sin(deg * Math.PI / 180), 100 - r * Math.cos(deg * Math.PI / 180)];
+const newRefs = () => ({ h: null, m: null, s: null, gears: [], nm: [], digits: null });
+let MAIN = newRefs();
+let secAngle = 0, lastDigSec = -1;
+
+function ticks(svg, o) {
+  for (let k = 0; k < 60; k++) {
+    const big = k % 5 === 0;
+    const [x1, y1] = ang(big ? o.rb : o.rs, k * 6), [x2, y2] = ang(o.r2, k * 6);
+    el('line', { class: o.cls || 'tk', x1, y1, x2, y2, 'stroke-width': big ? o.wb : o.ws }, svg);
+  }
+}
+/* Twelve lamps, one per machine. They light up when you own that machine. */
+function lamps(svg, r, rad, R) {
+  for (let i = 0; i < 12; i++) {
+    const [cx, cy] = ang(r, (i + 1) * 30);
+    R.nm[i] = el('circle', { class: 'nm', cx, cy, r: rad }, svg);
+  }
+}
+function centerCap(svg, big) {
+  el('circle', { class: 'cap-b', cx: 100, cy: 100, r: big || 5 }, svg);
+  el('circle', { class: 'cap-i', cx: 100, cy: 100, r: 1.8 }, svg);
+}
+
+/* Brass Classic */
+function buildBrass(svg, R) {
+  ticks(svg, { rb: 80, rs: 85, r2: 90, wb: 2.2, ws: .8 });
+  for (let h = 1; h <= 12; h++) {
+    const [x, y] = ang(67, h * 30);
+    const t = el('text', { class: 'nm', x, y }, svg);
+    if (ROMAN[h - 1].length > 3) t.style.fontSize = '9px';
+    t.textContent = ROMAN[h - 1];
+    R.nm[h - 1] = t;
+  }
+  el('text', { class: 'dial-name', x: 100, y: 64 }, svg).textContent = 'CLICK-A-CLOCK';
+  el('text', { class: 'dial-sub', x: 100, y: 142 }, svg).textContent = 'TWELVE MACHINES';
+  R.h = el('line', { class: 'hand', x1: 100, y1: 108, x2: 100, y2: 60, 'stroke-width': 5.2 }, svg);
+  R.m = el('line', { class: 'hand', x1: 100, y1: 112, x2: 100, y2: 38, 'stroke-width': 3.4 }, svg);
+  const sg = el('g', {}, svg);
+  el('line', { class: 'hand-s', x1: 100, y1: 120, x2: 100, y2: 27, 'stroke-width': 1.5 }, sg);
+  el('circle', { class: 'cap-b', cx: 100, cy: 116, r: 3 }, sg);
+  R.s = sg;
+  centerCap(svg);
+}
+
+/* Bauhaus */
+function buildMinimal(svg, R) {
+  for (let k = 0; k < 4; k++) {
+    const [x1, y1] = ang(76, k * 90), [x2, y2] = ang(93, k * 90);
+    el('line', { class: 'tk', x1, y1, x2, y2, 'stroke-width': 5 }, svg);
+  }
+  lamps(svg, 66, 2.3, R);
+  el('text', { class: 'dial-name', x: 100, y: 138 }, svg).textContent = 'CLICK A CLOCK';
+  R.h = el('line', { class: 'hand', x1: 100, y1: 110, x2: 100, y2: 56, 'stroke-width': 6, style: 'stroke-linecap:butt' }, svg);
+  R.m = el('line', { class: 'hand', x1: 100, y1: 114, x2: 100, y2: 28, 'stroke-width': 4, style: 'stroke-linecap:butt' }, svg);
+  const sg = el('g', {}, svg);
+  el('line', { class: 'hand-s', x1: 100, y1: 126, x2: 100, y2: 22, 'stroke-width': 1.6 }, sg);
+  R.s = sg;
+  centerCap(svg, 4.5);
+}
+
+/* LCD Digital */
+const SEGMAP = ['abcdef', 'bc', 'abdeg', 'abcdg', 'bcfg', 'acdfg', 'acdefg', 'abc', 'abcdefg', 'abcdfg'];
+function segDigit(svg, x, y, w, h, t) {
+  const H = (x0, y0, len) => `${x0},${y0} ${x0 + t / 2},${y0 - t / 2} ${x0 + len - t / 2},${y0 - t / 2} ${x0 + len},${y0} ${x0 + len - t / 2},${y0 + t / 2} ${x0 + t / 2},${y0 + t / 2}`;
+  const V = (x0, y0, len) => `${x0},${y0} ${x0 + t / 2},${y0 + t / 2} ${x0 + t / 2},${y0 + len - t / 2} ${x0},${y0 + len} ${x0 - t / 2},${y0 + len - t / 2} ${x0 - t / 2},${y0 + t / 2}`;
+  const g = t * .7, hl = w - 2 * g, vl = h / 2 - 1.7 * g;
+  const pts = [H(x + g, y, hl), V(x + w, y + g * .7, vl), V(x + w, y + h / 2 + g * .7, vl), H(x + g, y + h, hl), V(x, y + h / 2 + g * .7, vl), V(x, y + g * .7, vl), H(x + g, y + h / 2, hl)];
+  return pts.map(p => el('polygon', { class: 'sg', points: p }, svg));
+}
+function setDigit(segs, n) {
+  const on = SEGMAP[n];
+  'abcdefg'.split('').forEach((c, i) => segs[i].classList.toggle('on', on.includes(c)));
+}
+function setDigits(D, date, tpsText) {
+  const hh = date.getHours(), mm = date.getMinutes(), ss = date.getSeconds();
+  [Math.floor(hh / 10), hh % 10, Math.floor(mm / 10), mm % 10].forEach((n, i) => setDigit(D.main[i], n));
+  [Math.floor(ss / 10), ss % 10].forEach((n, i) => setDigit(D.sec[i], n));
+  D.colon.forEach(c => c.classList.toggle('on', ss % 2 === 0));
+  D.tps.textContent = tpsText;
+}
+function buildDigital(svg, R) {
+  lamps(svg, 91, 2.4, R);
+  el('text', { class: 'dial-name lcd-t', x: 100, y: 60 }, svg).textContent = 'CLICK-A-CLOCK';
+  const D = { main: [], sec: [], colon: [], tps: null };
+  [36, 66, 114, 144].forEach(x => D.main.push(segDigit(svg, x, 72, 22, 40, 5)));
+  D.colon.push(el('circle', { class: 'sg', cx: 100, cy: 85, r: 2.8 }, svg), el('circle', { class: 'sg', cx: 100, cy: 100, r: 2.8 }, svg));
+  [86, 102].forEach(x => D.sec.push(segDigit(svg, x, 124, 11, 20, 2.6)));
+  D.tps = el('text', { class: 'dial-sub lcd-t', x: 100, y: 158 }, svg);
+  R.digits = D;
+  setDigits(D, new Date(), '');
+}
+
+/* Antique Mantel */
+function buildAntique(svg, R) {
+  el('circle', { class: 'ln', cx: 100, cy: 100, r: 94, 'stroke-width': 1.4 }, svg);
+  el('circle', { class: 'ln', cx: 100, cy: 100, r: 83, 'stroke-width': .6 }, svg);
+  for (let k = 0; k < 60; k++) {
+    const big = k % 5 === 0, [x1, y1] = ang(big ? 83 : 86, k * 6), [x2, y2] = ang(91, k * 6);
+    el('line', { class: 'ln', x1, y1, x2, y2, 'stroke-width': big ? 1.8 : .6 }, svg);
+  }
+  el('circle', { cx: 66, cy: 150, r: 24, fill: '#8A6B33', opacity: .1 }, svg);
+  el('circle', { cx: 148, cy: 58, r: 16, fill: '#8A6B33', opacity: .08 }, svg);
+  el('path', { class: 'ln', d: 'M34 62l8 14-4 10 10 12', 'stroke-width': .6, opacity: .35 }, svg);
+  el('path', { class: 'ln', d: 'M160 140l-9-8 3-9-8-6', 'stroke-width': .6, opacity: .3 }, svg);
+  for (let h = 1; h <= 12; h++) {
+    const [x, y] = ang(68, h * 30);
+    const t = el('text', { class: 'nm', x, y, style: `font-family:Cinzel,Georgia,serif;font-weight:700;font-size:${ROMAN[h - 1].length > 3 ? 9.5 : 12}px` }, svg);
+    t.textContent = ROMAN[h - 1];
+    R.nm[h - 1] = t;
+  }
+  el('text', { class: 'dial-sub', x: 100, y: 134, style: 'font-family:Cinzel,Georgia,serif;font-size:5.6px;letter-spacing:.22em' }, svg).textContent = 'CLICK-A-CLOCK';
+  el('text', { class: 'dial-sub', x: 100, y: 142, style: 'font-family:Cinzel,Georgia,serif;font-size:4px;letter-spacing:.3em' }, svg).textContent = 'EST. 1887';
+  const hg = el('g', {}, svg);
+  el('line', { class: 'ln', x1: 100, y1: 110, x2: 100, y2: 78, 'stroke-width': 2.8 }, hg);
+  el('path', { class: 'ink', d: 'M100 50C92 63 92 73 100 80C108 73 108 63 100 50Z' }, hg);
+  R.h = hg;
+  const mg = el('g', {}, svg);
+  el('line', { class: 'ln', x1: 100, y1: 112, x2: 100, y2: 46, 'stroke-width': 1.9 }, mg);
+  el('path', { class: 'ink', d: 'M100 20C95.5 31 95.5 41 100 47C104.5 41 104.5 31 100 20Z' }, mg);
+  R.m = mg;
+  const sg = el('g', {}, svg);
+  el('line', { class: 'hand-s', x1: 100, y1: 124, x2: 100, y2: 28, 'stroke-width': 1 }, sg);
+  el('circle', { class: 'cap-b', cx: 100, cy: 118, r: 2.6 }, sg);
+  R.s = sg;
+  centerCap(svg, 4.6);
+}
+
+/* Neon Nights */
+function buildNeon(svg, R) {
+  const id = 'gl' + (++uid);
+  const f = el('filter', { id, x: '-30%', y: '-30%', width: '160%', height: '160%' }, el('defs', {}, svg));
+  el('feGaussianBlur', { stdDeviation: 1.6, result: 'b' }, f);
+  const mg = el('feMerge', {}, f);
+  el('feMergeNode', { in: 'b' }, mg);
+  el('feMergeNode', { in: 'SourceGraphic' }, mg);
+  const g = el('g', { filter: `url(#${id})` }, svg);
+  el('circle', { cx: 100, cy: 100, r: 95, fill: 'none', stroke: '#FF3DCB', 'stroke-width': 1.8 }, g);
+  ticks(g, { cls: 'neon-t', rb: 82, rs: 86, r2: 90, wb: 1.8, ws: .7 });
+  for (let h = 1; h <= 12; h++) {
+    const [x, y] = ang(68, h * 30);
+    const t = el('text', { class: 'nm neon-n', x, y, style: 'font-family:Unbounded,sans-serif;font-weight:700;font-size:10.5px' }, svg);
+    t.textContent = h;
+    R.nm[h - 1] = t;
+  }
+  el('text', { class: 'neon-name', x: 100, y: 136 }, svg).textContent = 'CLICK-A-CLOCK';
+  R.h = el('line', { class: 'neon-h', x1: 100, y1: 106, x2: 100, y2: 60, 'stroke-width': 3.4 }, g);
+  R.m = el('line', { class: 'neon-m', x1: 100, y1: 110, x2: 100, y2: 32, 'stroke-width': 2.4 }, g);
+  const sg = el('g', {}, g);
+  el('line', { class: 'neon-s', x1: 100, y1: 120, x2: 100, y2: 24, 'stroke-width': 1.2 }, sg);
+  R.s = sg;
+  el('circle', { cx: 100, cy: 100, r: 4, fill: '#FFE66B' }, g);
+}
+
+/* Skeleton Works */
+function gearPath(cx, cy, n, ro, ri) {
+  const pts = [], s = 360 / n;
+  for (let i = 0; i < n; i++) {
+    [[0, ri], [.15, ro], [.45, ro], [.6, ri]].forEach(([f, r]) => {
+      const t = (i * s + f * s) * Math.PI / 180;
+      pts.push([cx + r * Math.sin(t), cy - r * Math.cos(t)]);
+    });
+  }
+  return 'M' + pts.map(p => p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('L') + 'Z';
+}
+function addGear(svg, R, cx, cy, n, ro, ri, k) {
+  const g = el('g', {}, svg);
+  el('path', { class: 'gear', d: gearPath(cx, cy, n, ro, ri) }, g);
+  el('circle', { class: 'gear-in', cx, cy, r: ri * .7 }, g);
+  for (let a = 0; a < 4; a++) {
+    const t = a * Math.PI / 2 + .4;
+    el('line', { class: 'gear-in', x1: cx, y1: cy, x2: cx + ri * .7 * Math.sin(t), y2: cy - ri * .7 * Math.cos(t) }, g);
+  }
+  el('circle', { class: 'gear-in', cx, cy, r: 2.2 }, g);
+  R.gears.push({ el: g, cx, cy, k });
+}
+function buildSkeleton(svg, R) {
+  for (let k = 0; k < 12; k++) {
+    const [x1, y1] = ang(84, k * 30), [x2, y2] = ang(94, k * 30);
+    el('line', { class: 'sk-b', x1, y1, x2, y2, 'stroke-width': k % 3 === 0 ? 3.6 : 2 }, svg);
+  }
+  addGear(svg, R, 62, 126, 24, 34, 29, .5);
+  addGear(svg, R, 114, 118, 18, 26, 22, -.667);
+  addGear(svg, R, 138, 86, 10, 17, 13, 1.2);
+  lamps(svg, 76, 2.6, R);
+  R.h = el('path', { class: 'sk-h', d: 'M100 112L95 96L100 56L105 96Z' }, svg);
+  R.m = el('path', { class: 'sk-h', d: 'M100 114L96.5 98L100 28L103.5 98Z' }, svg);
+  const sg = el('g', {}, svg);
+  el('line', { class: 'sk-s', x1: 100, y1: 124, x2: 100, y2: 24, 'stroke-width': 1.2 }, sg);
+  R.s = sg;
+  el('circle', { cx: 100, cy: 100, r: 5, fill: '#FF5A6A' }, svg);
+  el('circle', { cx: 100, cy: 100, r: 1.8, fill: '#10151D' }, svg);
+}
+
+/* Cosmic */
+function buildCosmic(svg, R) {
+  let seed = 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 46; i++) {
+    const a = { cx: (rnd() * 200).toFixed(1), cy: (rnd() * 200).toFixed(1), r: (.3 + rnd() * .9).toFixed(2), fill: '#fff', opacity: (.35 + rnd() * .6).toFixed(2) };
+    if (i % 7 === 0) a.class = 'tw';
+    el('circle', a, svg);
+  }
+  el('polyline', { points: '40,52 56,42 72,50 84,36', fill: 'none', stroke: '#fff', 'stroke-width': .5, opacity: .3 }, svg);
+  const pl = el('g', {}, svg);
+  el('circle', { cx: 150, cy: 58, r: 10, fill: '#6F5BD8' }, pl);
+  el('ellipse', { cx: 150, cy: 58, rx: 17, ry: 4.5, fill: 'none', stroke: '#FFD166', 'stroke-width': 1.4, transform: 'rotate(-20 150 58)' }, pl);
+  el('circle', { cx: 48, cy: 142, r: 4, fill: '#C9C4F5' }, svg);
+  lamps(svg, 86, 2.4, R);
+  el('text', { class: 'dial-sub', x: 100, y: 142 }, svg).textContent = 'CLICK-A-CLOCK';
+  R.h = el('line', { class: 'cos-h', x1: 100, y1: 108, x2: 100, y2: 60, 'stroke-width': 4.6 }, svg);
+  R.m = el('line', { class: 'cos-h', x1: 100, y1: 112, x2: 100, y2: 34, 'stroke-width': 3 }, svg);
+  const sg = el('g', {}, svg);
+  el('line', { class: 'cos-s', x1: 100, y1: 118, x2: 100, y2: 26, 'stroke-width': 1 }, sg);
+  el('circle', { cx: 100, cy: 24, r: 3.4, fill: '#FFD166' }, sg);
+  R.s = sg;
+  el('circle', { cx: 100, cy: 100, r: 4.4, fill: '#FFD166' }, svg);
+}
+
+const SKINS = [
+  { id: 'brass', name: 'Brass Classic', desc: 'The original polished brass analog clock.', cost: 0, build: buildBrass },
+  { id: 'minimal', name: 'Bauhaus', desc: 'White enamel dial, four batons and a red second hand.', cost: 15, build: buildMinimal },
+  { id: 'digital', name: 'LCD Digital', desc: 'Seven segment display. Shows the real time and your ticks per second.', cost: 30, build: buildDigital },
+  { id: 'antique', name: 'Antique Mantel', desc: 'Aged ivory dial, Roman numerals, spade hands and a cracked finish.', cost: 45, build: buildAntique },
+  { id: 'neon', name: 'Neon Nights', desc: 'Glowing tubes on a dark dial. Machine numerals light up in cyan.', cost: 60, build: buildNeon },
+  { id: 'skeleton', name: 'Skeleton Works', desc: 'Open dial with turning gears and ruby jewels for each machine.', cost: 90, build: buildSkeleton },
+  { id: 'cosmic', name: 'Cosmic', desc: 'Starfield dial with a ringed planet and a comet for a second hand.', cost: 140, build: buildCosmic },
+];
+const SKIN_BY_ID = Object.fromEntries(SKINS.map(s => [s.id, s]));
+const owns = id => id === 'brass' || S.skins.includes(id);
+
+function pose(R, s, m, h) {
+  if (R.s) R.s.setAttribute('transform', `rotate(${(s % 360).toFixed(2)} 100 100)`);
+  if (R.m) R.m.setAttribute('transform', `rotate(${(m % 360).toFixed(2)} 100 100)`);
+  if (R.h) R.h.setAttribute('transform', `rotate(${(h % 360).toFixed(2)} 100 100)`);
+  for (const g of R.gears) g.el.setAttribute('transform', `rotate(${((s * g.k) % 360).toFixed(2)} ${g.cx} ${g.cy})`);
+}
+function drawHands() { pose(MAIN, secAngle, secAngle / 12, secAngle / 144); }
+function updateNumerals() { MAIN.nm.forEach((n, i) => n && n.classList.toggle('lit', S.owned[i] > 0)); }
+function buildDial() {
+  const svg = $('#dial');
+  svg.innerHTML = '';
+  MAIN = newRefs();
+  const id = SKIN_BY_ID[S.skin] ? S.skin : 'brass';
+  SKIN_BY_ID[id].build(svg, MAIN);
+  clock.dataset.skin = id;
+  clock.classList.toggle('sk', id !== 'brass');
+  lastDigSec = -1;
+  updateNumerals();
+  drawHands();
+}
+
+/* ---------- Gems and skin shop ---------- */
+let gemsShown = -1;
+function renderGems() {
+  if (gemsShown === S.gems) return;
+  gemsShown = S.gems;
+  $('#gemN').textContent = S.gems.toLocaleString('en-US');
+  $('#skinGems').textContent = S.gems.toLocaleString('en-US');
+}
+function previewSkin(sk, svg) {
+  const R = newRefs();
+  sk.build(svg, R);
+  pose(R, 180, 60, 305);
+  if (R.digits) setDigits(R.digits, new Date(2026, 0, 1, 10, 10, 30), '12.5 / SEC');
+  R.nm.forEach((n, i) => n && n.classList.toggle('lit', i < 4));
+}
+function renderSkins() {
+  const grid = $('#skinGrid');
+  grid.innerHTML = '';
+  for (const sk of SKINS) {
+    const own = owns(sk.id), eq = S.skin === sk.id;
+    const card = document.createElement('div');
+    card.className = 'skin' + (eq ? ' eq' : '');
+    card.innerHTML = `<div class="pv-wrap"><div class="pclock sk" data-skin="${sk.id}"><span class="clock-body"><span class="face"><svg viewBox="0 0 200 200" aria-hidden="true"></svg></span></span></div></div><h3>${sk.name}</h3><p>${sk.desc}</p>`;
+    previewSkin(sk, card.querySelector('svg'));
+    const b = document.createElement('button');
+    b.className = 'btn' + (own && !eq ? ' ghost' : '');
+    b.dataset.id = sk.id;
+    if (eq) { b.textContent = 'Equipped'; b.disabled = true; b.dataset.act = ''; }
+    else if (own) { b.textContent = 'Equip'; b.dataset.act = 'equip'; }
+    else if (S.gems >= sk.cost) { b.textContent = `Buy for ${sk.cost} gems`; b.dataset.act = 'buy'; }
+    else { b.textContent = `${sk.cost} gems (need ${sk.cost - S.gems} more)`; b.disabled = true; b.dataset.act = ''; }
+    card.appendChild(b);
+    grid.appendChild(card);
+  }
+  gemsShown = -1;
+  renderGems();
+}
+function equipSkin(id) {
+  if (!owns(id)) return;
+  S.skin = id;
+  buildDial();
+  renderSkins();
+  save();
+  toast(`Equipped ${SKIN_BY_ID[id].name}`);
+}
+function buySkin(id) {
+  const sk = SKIN_BY_ID[id];
+  if (!sk || owns(id) || S.gems < sk.cost) return;
+  S.gems -= sk.cost;
+  S.skins.push(id);
+  toast(`Unlocked ${sk.name}`);
+  equipSkin(id);
+}
+
+/* ---------- Machines UI ---------- */
+const rows = [];
+function buildMachines() {
+  const box = $('#machines');
+  box.innerHTML = '';
+  rows.length = 0;
+  MACHINES.forEach((m, i) => {
+    const b = document.createElement('button');
+    b.className = 'machine';
+    b.dataset.i = i;
+    b.innerHTML = `<span class="num"></span>
+      <span class="m-info"><span class="m-name"></span><span class="m-desc" style="display:block"></span><span class="m-out"></span></span>
+      <span class="m-right"><span class="m-count"></span><span class="m-cost" style="display:block"></span></span>`;
+    box.appendChild(b);
+    rows.push({ b, num: b.querySelector('.num'), name: b.querySelector('.m-name'), desc: b.querySelector('.m-desc'), out: b.querySelector('.m-out'), count: b.querySelector('.m-count'), cost: b.querySelector('.m-cost') });
+  });
+}
+function setIcon(r, k, i) {
+  if (r.ik === k) return;
+  r.ik = k;
+  r.num.innerHTML = k === 'lock' ? '?' : MICON[i];
+}
+function renderMachines() {
+  let teaserShown = false;
+  MACHINES.forEach((m, i) => {
+    const r = rows[i];
+    const revealed = i === 0 || S.owned[i] > 0 || S.owned[i - 1] > 0;
+    if (!revealed) {
+      if (teaserShown) { r.b.hidden = true; return; }
+      teaserShown = true;
+      r.b.hidden = false;
+      r.b.className = 'machine locked';
+      r.b.setAttribute('aria-disabled', 'true');
+      setIcon(r, 'lock', i);
+      r.name.textContent = 'Unknown machine';
+      r.desc.textContent = `Buy a ${MACHINES[i - 1].name} to reveal it.`;
+      r.out.textContent = '';
+      r.count.textContent = '?';
+      r.cost.textContent = fmt(m.cost);
+      return;
+    }
+    r.b.hidden = false;
+    let n = buyCount(i);
+    const showN = n === 0 ? 1 : n;
+    const cost = costFor(i, showN);
+    const cant = n === 0 || S.ticks < cost;
+    r.b.className = 'machine' + (S.owned[i] > 0 ? ' owned' : '') + (cant ? ' cant' : '');
+    r.b.setAttribute('aria-disabled', cant ? 'true' : 'false');
+    r.name.textContent = m.name;
+    setIcon(r, 'm', i);
+    r.desc.textContent = `Each makes ${fmt(C.each[i], true)} ticks per second.`;
+    const total = C.each[i] * S.owned[i];
+    const share = C.baseTps > 0 ? Math.round(total / C.baseTps * 100) : 0;
+    r.out.textContent = S.owned[i] > 0
+      ? `You own ${S.owned[i].toLocaleString('en-US')}: ${fmt(total, true)} ticks per second, ${share}% of your total.`
+      : m.desc;
+    r.count.textContent = S.owned[i].toLocaleString('en-US');
+    const label = S.buyAmt === 'max' ? `x${n}` : `x${S.buyAmt}`;
+    r.cost.textContent = (S.buyAmt === 1 ? '' : label + ' · ') + fmt(cost);
+    r.b.setAttribute('aria-label', `Buy ${showN} ${m.name} for ${fmt(cost)} ticks. Owned ${S.owned[i]}.`);
+  });
+}
+function buyMachine(i) {
+  let n = buyCount(i);
+  if (n <= 0) return;
+  const cost = costFor(i, n);
+  if (S.ticks < cost) return;
+  const first = S.owned[i] === 0;
+  S.ticks -= cost;
+  S.owned[i] += n;
+  recalc();
+  updateNumerals();
+  renderMachines();
+  renderUpgrades(true);
+  if (first) toast(`${MACHINES[i].name} installed · numeral ${ROMAN[i]} lit`);
+}
+
+/* ---------- Upgrades UI ---------- */
+let upKey = '';
+function availableUpgrades() {
+  const owned = new Set(S.upgrades);
+  return UPG.filter(u => !owned.has(u.id) && u.unlock(S)).sort((a, b) => a.cost - b.cost);
+}
+function renderUpgrades(force) {
+  const list = availableUpgrades();
+  const key = list.map(u => u.id).join(',');
+  const box = $('#upgrades');
+  if (key !== upKey || force) {
+    upKey = key;
+    box.innerHTML = '';
+    if (!list.length) {
+      box.innerHTML = `<div class="empty" style="grid-column:1/-1">No upgrades ready yet. Buy machines and earn ticks to unlock the next one.</div>`;
+    }
+    for (const u of list) {
+      const b = document.createElement('button');
+      b.className = 'up';
+      b.dataset.id = u.id;
+      b.innerHTML = `<span class="kind">${upIcon(u)}${u.kind}</span><span class="u-name">${u.name}</span><span class="u-desc">${u.desc}</span><span class="u-cost">${fmt(u.cost)} ticks</span>`;
+      box.appendChild(b);
+    }
+  }
+  let affordable = 0;
+  box.querySelectorAll('.up').forEach(b => {
+    const u = UPG_BY_ID[b.dataset.id];
+    const cant = S.ticks < u.cost;
+    if (!cant) affordable++;
+    b.classList.toggle('cant', cant);
+    b.setAttribute('aria-disabled', cant ? 'true' : 'false');
+    b.querySelector('.u-cost').textContent = fmt(u.cost) + ' ticks';
+  });
+  const badge = $('#upBadge');
+  badge.hidden = affordable === 0;
+  badge.textContent = affordable;
+  $('#upInstalled').textContent = `${S.upgrades.length} of ${UPG.length} installed`;
+}
+function buyUpgrade(id) {
+  const u = UPG_BY_ID[id];
+  if (!u || S.upgrades.includes(id) || S.ticks < u.cost) return;
+  S.ticks -= u.cost;
+  S.upgrades.push(id);
+  recalc();
+  renderUpgrades(true);
+  renderMachines();
+  toast(`Installed ${u.name}`);
+}
+
+/* ---------- Rewind UI ---------- */
+function renderRewind() {
+  const p = pendingGears();
+  $('#rwGears').textContent = S.gears.toLocaleString('en-US');
+  $('#rwBonus').textContent = '+' + fmt(S.gears * 5) + '%';
+  $('#rwPending').textContent = '+' + p.toLocaleString('en-US');
+  const next = 1e9 * Math.pow(gearsFor(S.lifetimeEarned) + 1, 3);
+  $('#rwNext').innerHTML = `Lifetime ticks: <b>${fmt(S.lifetimeEarned)}</b>. Next gear at <b>${fmt(next)}</b>.`;
+  $('#rwBtn').disabled = p < 1;
+  $('#rwBtn').textContent = p < 1 ? 'Rewind time (no gears yet)' : `Rewind time for ${p.toLocaleString('en-US')} gears`;
+  $('#rwConfirmN').textContent = p.toLocaleString('en-US');
+  const b = $('#rwBadge');
+  b.hidden = p < 1;
+  b.textContent = p > 999 ? fmt(p) : p;
+}
+function doRewind() {
+  const p = pendingGears();
+  if (p < 1) return;
+  S.gears += p;
+  S.rewinds++;
+  S.gems += 5;
+  S.ticks = 0; S.runEarned = 0;
+  S.owned = Array(12).fill(0);
+  S.upgrades = [];
+  S.frenzyUntil = 0;
+  recalc(); updateNumerals(); renderMachines(); renderUpgrades(true); renderRewind();
+  $('#rwConfirm').hidden = true; $('#rwRow').hidden = false;
+  toast(`Time rewound · +${p} gears · production +${fmt(S.gears * 5)}% · +5 gems`);
+  save();
+}
+
+/* ---------- Stats UI ---------- */
+function renderStats() {
+  const rows = [
+    ['Ticks this run', fmt(S.runEarned)],
+    ['Lifetime ticks', fmt(S.lifetimeEarned)],
+    ['Per second', fmt(C.tps, true)],
+    ['Per click', fmt(C.click, true)],
+    ['Clicks', S.clicks.toLocaleString('en-US')],
+    ['Ticks from clicks', fmt(S.clickEarned)],
+    ['Machines owned', totalOwned(S).toLocaleString('en-US')],
+    ['Production multiplier', 'x' + fmt(C.global, true)],
+    ['Golden chimes caught', S.chimes.toLocaleString('en-US')],
+    ['Perfect Ticks', S.perfects.toLocaleString('en-US')],
+    ['Best Perfect streak', S.bestStreak.toLocaleString('en-US')],
+    ['Rewinds', S.rewinds.toLocaleString('en-US')],
+    ['Play time', fmtTime(S.playTime)],
+    ['Achievement bonus', '+' + S.achievements.length + '%'],
+  ];
+  $('#stats').innerHTML = rows.map(([k, v]) => `<div class="tile"><dt>${k}</dt><dd class="sm">${v}</dd></div>`).join('');
+  const got = new Set(S.achievements);
+  $('#ach').innerHTML = ACH.map(a => `<div class="a${got.has(a.id) ? ' got' : ''}"><i class="a-ic">${ICONS[ACH_ICON[a.id[0]]]}</i><b>${got.has(a.id) ? a.name : 'Locked'}</b><span>${a.desc}</span></div>`).join('');
+  $('#achNote').textContent = `${S.achievements.length} of ${ACH.length} · +1% production each`;
+  document.querySelectorAll('#notSeg button').forEach(b => b.classList.toggle('on', b.dataset.not === S.notation));
+}
+function checkAchievements() {
+  const got = new Set(S.achievements);
+  let changed = false;
+  for (const a of ACH) {
+    if (!got.has(a.id) && a.test(S)) { S.achievements.push(a.id); S.gems += 3; changed = true; toast(`Achievement · ${a.name} · +3 gems`); }
+  }
+  if (changed) recalc();
+}
+
+/* ---------- Toasts ---------- */
+function toast(msg) {
+  const box = $('#toasts');
+  while (box.children.length >= 4) box.firstChild.remove();
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  box.appendChild(t);
+  setTimeout(() => t.remove(), 3200);
+}
+
+/* ---------- Clicking ---------- */
+const stage = $('#stage');
+const clock = $('#clock');
+let pressTimer = 0, floats = 0;
+const BEAT_MS = 3000;
+const perfectMult = n => 2 + Math.min(n, 25) * 0.5;
+const beatEl = $('#beat'), markerEl = $('#marker');
+let lastBeat = -1, streak = 0, lastPerfect = 0;
+function drawZone() {
+  const z = $('#zone');
+  if (!z) return;
+  const th = C.window * 2 * Math.PI, s = 47 * Math.sin(th), c = 47 * Math.cos(th);
+  z.setAttribute('d', `M ${(50 - s).toFixed(2)} ${(50 - c).toFixed(2)} A 47 47 0 0 1 ${(50 + s).toFixed(2)} ${(50 - c).toFixed(2)}`);
+}
+function doClick(x, y) {
+  const t = now();
+  const ph = (t % BEAT_MS) / BEAT_MS, idx = Math.round(t / BEAT_MS);
+  let gain = C.click, perfect = false;
+  if (Math.min(ph, 1 - ph) <= C.window && idx !== lastBeat) {
+    lastBeat = idx; perfect = true;
+    streak++; lastPerfect = t; S.perfects++; S.bestStreak = Math.max(S.bestStreak, streak);
+    if (streak % 10 === 0) { S.gems += 2; toast(`Perfect streak ${streak} · +2 gems`); }
+    gain *= perfectMult(streak);
+    beatEl.classList.add('hit');
+    setTimeout(() => beatEl.classList.remove('hit'), 220);
+  }
+  earn(gain);
+  S.clicks++;
+  S.clickEarned += gain;
+  secAngle += 6;
+  clock.classList.add('pressed');
+  clearTimeout(pressTimer);
+  pressTimer = setTimeout(() => clock.classList.remove('pressed'), 80);
+  if (reduceMotion || floats > 40) return;
+  const f = document.createElement('div');
+  f.className = 'float' + (perfect ? ' perfect' : '');
+  f.textContent = (perfect ? 'Perfect +' : '+') + fmt(gain, true);
+  f.style.left = x + 'px'; f.style.top = y + 'px';
+  floats++;
+  f.addEventListener('animationend', () => { f.remove(); floats--; });
+  stage.appendChild(f);
+  for (let k = 0; k < 5; k++) {
+    const s = document.createElement('div');
+    s.className = 'spark';
+    const a = Math.random() * Math.PI * 2, d = 30 + Math.random() * 40;
+    s.style.left = x + 'px'; s.style.top = y + 'px';
+    s.style.setProperty('--dx', Math.cos(a) * d + 'px');
+    s.style.setProperty('--dy', Math.sin(a) * d + 'px');
+    s.addEventListener('animationend', () => s.remove());
+    stage.appendChild(s);
+  }
+}
+function clockCenter() {
+  const r = stage.getBoundingClientRect(), c = clock.getBoundingClientRect();
+  return [c.left - r.left + c.width / 2, c.top - r.top + c.height / 2];
+}
+clock.addEventListener('pointerdown', e => {
+  if (e.button !== 0) return;
+  e.preventDefault();
+  const r = stage.getBoundingClientRect();
+  doClick(e.clientX - r.left, e.clientY - r.top);
+});
+clock.addEventListener('keydown', e => {
+  if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); if (!e.repeat) doClick(...clockCenter()); }
+});
+document.addEventListener('keydown', e => {
+  if (e.key === ' ' && !e.repeat && (e.target === document.body || e.target === document.documentElement)) {
+    e.preventDefault(); doClick(...clockCenter());
+  }
+});
+
+/* ---------- Golden chime ---------- */
+let chimeEl = null, nextChime = now() + 40000 + Math.random() * 40000;
+const BELL = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5a5.5 5.5 0 0 0-5.5 5.5v3.4L4.6 16h14.8l-1.9-3.6V9A5.5 5.5 0 0 0 12 3.5z" fill="#3A2504"/><circle cx="12" cy="18.6" r="2" fill="#3A2504"/></svg>`;
+function spawnChime() {
+  const b = document.createElement('button');
+  b.className = 'chime';
+  b.setAttribute('aria-label', 'Golden chime, click for a bonus');
+  b.innerHTML = BELL;
+  b.style.left = (6 + Math.random() * 78) + '%';
+  b.style.top = (18 + Math.random() * 62) + '%';
+  b.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); catchChime(); });
+  b.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); catchChime(); } });
+  stage.appendChild(b);
+  chimeEl = b;
+  b._timer = setTimeout(() => { removeChime(); }, 13000);
+}
+function removeChime() {
+  if (!chimeEl) return;
+  clearTimeout(chimeEl._timer);
+  chimeEl.remove();
+  chimeEl = null;
+  nextChime = now() + 60000 + Math.random() * 120000;
+}
+function catchChime() {
+  S.chimes++;
+  S.gems += 1;
+  if (Math.random() < 0.55 && C.baseTps > 0) {
+    S.frenzyUntil = now() + 30000;
+    recalc();
+    toast('Frenzy · production and clicks x7 for 30 seconds · +1 gem');
+  } else {
+    const gain = Math.min(S.ticks * 0.15, C.baseTps * 900) + 13;
+    earn(gain);
+    toast(`Lucky chime · +${fmt(gain)} ticks · +1 gem`);
+  }
+  removeChime();
+}
+
+/* ---------- Effects ---------- */
+function renderEffects() {
+  const left = S.frenzyUntil - now();
+  let h = '';
+  if (left > 0) h += `<span class="pill">Frenzy x7 · ${Math.ceil(left / 1000)}s</span>`;
+  if (streak > 0) h += `<span class="pill good">Perfect streak ${streak} · next click x${fmt(perfectMult(streak + 1), true)}</span>`;
+  $('#effects').innerHTML = h;
+}
+
+/* ---------- Fire ---------- */
+const FIRE_MSG = ['', 'Ten thousand ticks. The clock is on fire.', 'Ten million ticks. The fire rages.', 'One trillion ticks. The flames burn blue.'];
+let fireShown = 0;
+const fireLevel = () => S.lifetimeEarned >= 1e12 ? 3 : S.lifetimeEarned >= 1e7 ? 2 : S.lifetimeEarned >= 1e4 ? 1 : 0;
+function buildFlames(level) {
+  const box = $('#flames');
+  box.innerHTML = '';
+  if (!level) return;
+  const n = [0, 11, 17, 25][level];
+  for (let k = 0; k < n; k++) {
+    const a = -128 + 256 * (k / (n - 1)) + (Math.random() - .5) * 8;
+    const open = Math.cos(a * Math.PI / 180) * .5 + .75;
+    const w = (0.085 + Math.random() * .04) * (0.8 + level * .1);
+    const h = (0.14 + Math.random() * .08) * open * (0.8 + level * .2);
+    const fl = document.createElement('span');
+    fl.className = 'fl';
+    fl.style.transform = `rotate(${a.toFixed(1)}deg)`;
+    const i = document.createElement('i');
+    i.style.cssText = `width:calc(var(--clock) * ${w.toFixed(3)});height:calc(var(--clock) * ${h.toFixed(3)});margin-left:calc(var(--clock) * ${(-w / 2).toFixed(3)});bottom:calc(var(--clock) * .43);--d:${(.5 + Math.random() * .6).toFixed(2)}s;--dl:-${Math.random().toFixed(2)}s`;
+    fl.appendChild(i);
+    box.appendChild(fl);
+  }
+  for (let k = 0; k < level * 5; k++) {
+    const e = document.createElement('span');
+    e.className = 'ember';
+    e.style.cssText = `--x:${(20 + Math.random() * 60).toFixed(0)}%;--d:${(1.6 + Math.random() * 1.4).toFixed(2)}s;--dl:-${(Math.random() * 2).toFixed(2)}s;--dx:${((Math.random() - .5) * 60).toFixed(0)}px`;
+    box.appendChild(e);
+  }
+}
+function applyFire(level) {
+  fireShown = level;
+  if (level) clock.dataset.fire = level; else delete clock.dataset.fire;
+  buildFlames(level);
+}
+
+/* ---------- Theme ---------- */
+const root = document.documentElement;
+const THEME_KEY = 'click-a-clock-theme';
+function effTheme() {
+  const t = root.getAttribute('data-theme');
+  if (t === 'dark' || t === 'light') return t;
+  try { return matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; } catch (e) { return 'light'; }
+}
+function syncTheme() {
+  const dark = effTheme() === 'dark', b = $('#themeBtn');
+  b.setAttribute('aria-pressed', dark ? 'true' : 'false');
+  b.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
+}
+try { const st = localStorage.getItem(THEME_KEY); if (st === 'dark' || st === 'light') root.setAttribute('data-theme', st); } catch (e) {}
+$('#themeBtn').addEventListener('click', () => {
+  const next = effTheme() === 'dark' ? 'light' : 'dark';
+  root.setAttribute('data-theme', next);
+  try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+  syncTheme();
+});
+new MutationObserver(syncTheme).observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+syncTheme();
+
+/* ---------- Tabs and controls ---------- */
+let tab = 'machines';
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+  tab = t.dataset.tab;
+  document.querySelectorAll('.tab').forEach(x => x.setAttribute('aria-selected', x === t ? 'true' : 'false'));
+  document.querySelectorAll('.view[data-view]').forEach(v => v.hidden = v.dataset.view !== tab);
+  if (tab === 'stats') renderStats();
+  if (tab === 'rewind') renderRewind();
+  if (tab === 'upgrades') renderUpgrades(true);
+  if (tab === 'skins') renderSkins();
+}));
+$('#skinGrid').addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b || b.disabled) return;
+  if (b.dataset.act === 'buy') buySkin(b.dataset.id);
+  else if (b.dataset.act === 'equip') equipSkin(b.dataset.id);
+});
+$('#machines').addEventListener('click', e => {
+  const b = e.target.closest('.machine');
+  if (b && !b.classList.contains('locked')) buyMachine(+b.dataset.i);
+});
+$('#upgrades').addEventListener('click', e => {
+  const b = e.target.closest('.up');
+  if (b) buyUpgrade(b.dataset.id);
+});
+$('#buySeg').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  S.buyAmt = b.dataset.buy === 'max' ? 'max' : +b.dataset.buy;
+  syncBuySeg(); renderMachines();
+});
+function syncBuySeg() {
+  document.querySelectorAll('#buySeg button').forEach(b => b.classList.toggle('on', String(S.buyAmt) === b.dataset.buy));
+}
+$('#notSeg').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  S.notation = b.dataset.not;
+  renderAll();
+});
+$('#rwBtn').addEventListener('click', () => { if (pendingGears() >= 1) { $('#rwRow').hidden = true; $('#rwConfirm').hidden = false; } });
+$('#rwNo').addEventListener('click', () => { $('#rwConfirm').hidden = true; $('#rwRow').hidden = false; });
+$('#rwYes').addEventListener('click', doRewind);
+
+$('#exportBtn').addEventListener('click', () => {
+  const box = $('#exportBox');
+  box.hidden = !box.hidden; $('#importBox').hidden = true;
+  if (!box.hidden) { S.lastSeen = now(); $('#exportTa').value = btoa(JSON.stringify(S)); }
+});
+$('#copyBtn').addEventListener('click', () => {
+  const ta = $('#exportTa');
+  const fallback = () => { ta.focus(); ta.select(); toast('Code selected · copy it with your keyboard'); };
+  try {
+    navigator.clipboard.writeText(ta.value).then(() => toast('Save code copied'), fallback);
+  } catch (e) { fallback(); }
+});
+$('#importBtn').addEventListener('click', () => { const box = $('#importBox'); box.hidden = !box.hidden; $('#exportBox').hidden = true; });
+$('#loadBtn').addEventListener('click', () => {
+  try {
+    const o = JSON.parse(atob($('#importTa').value.trim()));
+    S = sanitize(o);
+    S.lastSeen = now();
+    afterLoad(); save();
+    $('#importBox').hidden = true; $('#importTa').value = '';
+    toast('Save loaded');
+  } catch (e) {
+    toast('That code could not be read. Paste the full code from Export save.');
+  }
+});
+$('#resetBtn').addEventListener('click', () => { $('#resetConfirm').hidden = false; });
+$('#resetNo').addEventListener('click', () => { $('#resetConfirm').hidden = true; });
+$('#resetYes').addEventListener('click', () => {
+  S = DEFAULT();
+  try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+  $('#resetConfirm').hidden = true;
+  removeChime();
+  afterLoad();
+  toast('Save deleted · fresh start');
+});
+
+/* ---------- Save / load ---------- */
+function save() {
+  S.lastSeen = now();
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify(S));
+    const d = new Date();
+    $('#saved').textContent = 'Saved ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  } catch (e) {
+    $('#saved').textContent = 'Saving is off in this browser';
+  }
+}
+function loadLocal() {
+  try { const raw = localStorage.getItem(SAVE_KEY); return raw ? JSON.parse(raw) : null; } catch (e) { return null; }
+}
+function renderAll() {
+  renderMachines(); renderUpgrades(true); renderRewind(); renderEffects();
+  if (tab === 'stats') renderStats();
+}
+function afterLoad() {
+  buildDial(); recalc(); syncBuySeg(); renderAll(); applyFire(fireLevel()); gemsShown = -1; renderGems();
+}
+
+/* ---------- Loops ---------- */
+let lastEcon = now();
+function econ() {
+  const t = now();
+  const dt = Math.min((t - lastEcon) / 1000, 3600);
+  lastEcon = t;
+  if (C.frenzy > 1 && t >= S.frenzyUntil) recalc();
+  earn(C.tps * dt);
+  S.playTime += dt;
+  if (streak > 0 && t - lastPerfect > BEAT_MS * 2 + 300) streak = 0;
+}
+let uiCount = 0;
+function ui() {
+  uiCount++;
+  const fl = fireLevel();
+  if (fl !== fireShown) { if (fl > fireShown) toast(FIRE_MSG[fl]); applyFire(fl); }
+  renderMachines();
+  renderUpgrades(false);
+  renderEffects();
+  if (uiCount % 4 === 0) renderRewind();
+  if (uiCount % 7 === 0) { checkAchievements(); if (tab === 'stats') renderStats(); }
+  if (!chimeEl && now() >= nextChime) spawnChime();
+  $('#tps').textContent = fmt(C.tps, true);
+  $('#cpc').textContent = fmt(C.click, true);
+  if (tab === 'skins' && S.gems !== gemsShown) renderSkins();
+  renderGems();
+}
+let lastFrame = performance.now();
+const countEl = $('#count'), unitEl = $('#unit');
+function frame(t) {
+  const dt = Math.min((t - lastFrame) / 1000, .25);
+  lastFrame = t;
+  const speed = 1 + Math.log10(1 + C.tps) * 0.8;
+  secAngle += dt * 6 * speed;
+  drawHands();
+  if (MAIN.digits) {
+    const sec = Math.floor(now() / 1000);
+    if (sec !== lastDigSec) { lastDigSec = sec; setDigits(MAIN.digits, new Date(), fmt(C.tps, true) + ' / SEC'); }
+  }
+  markerEl.setAttribute('transform', `rotate(${((now() % BEAT_MS) / BEAT_MS * 360).toFixed(1)} 50 50)`);
+  const shown = S.ticks + C.tps * Math.max(0, now() - lastEcon) / 1000;
+  const [big, unit] = fmtBig(shown);
+  if (countEl.textContent !== big) countEl.textContent = big;
+  if (unitEl.textContent !== unit) unitEl.textContent = unit;
+  requestAnimationFrame(frame);
+}
+
+/* ---------- Boot ---------- */
+function start(data) {
+  let offline = 0;
+  if (data && data.state) {
+    S = sanitize(data.state);
+  } else {
+    const saved = loadLocal();
+    if (saved) {
+      S = sanitize(saved);
+      recalc();
+      const away = Math.min(Math.max(0, (now() - S.lastSeen) / 1000), 8 * 3600);
+      offline = C.baseTps * away * 0.5;
+      if (offline > 0 && away > 30) { earn(offline); setTimeout(() => toast(`While you were away (${fmtTime(away)}) · +${fmt(offline)} ticks`), 400); }
+    } else {
+      setTimeout(() => toast('Click the clock to earn your first ticks'), 600);
+    }
+  }
+  document.querySelectorAll('.tab').forEach(t => { if (!t.querySelector('.ic')) t.insertAdjacentHTML('afterbegin', ICONS[t.dataset.tab]); });
+  buildDial();
+  buildMachines();
+  afterLoad();
+  lastEcon = now();
+  setInterval(econ, 100);
+  setInterval(ui, 150);
+  setInterval(save, 10000);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
+  window.addEventListener('pagehide', save);
+  requestAnimationFrame(frame);
+}
+
+const hot = window.claude && window.claude.hot;
+try { if (hot && hot.snapshot) hot.snapshot(() => ({ state: S })); } catch (e) {}
+if (hot && hot.ready) hot.ready(start); else start((hot && hot.data) || {});
+})();
+</script>
+
+</body></html>
